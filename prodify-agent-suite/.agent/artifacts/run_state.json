@@ -1,0 +1,9 @@
+{
+  "current_task": "01-understand",
+  "last_completed_task": null,
+  "next_task": "01-understand",
+  "selected_refactor_step": null,
+  "status": "ready",
+  "artifacts_dir": ".agent/artifacts",
+  "notes": []
+}

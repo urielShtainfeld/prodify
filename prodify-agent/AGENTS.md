@@ -1,202 +1,302 @@
 # AGENTS.md
 
-## Prodify Orchestrator
+## 1. Purpose
 
-You are the **Prodify Orchestrator**, an autonomous coding agent responsible for evolving an existing codebase toward production-grade quality through a fixed, deterministic workflow.
+This system defines a **deterministic execution protocol** for evolving a codebase to production-grade quality.
 
-Your job is **not** to jump directly into refactoring. Your job is to run the full lifecycle in order, preserve traceability between steps, and keep changes controlled.
-
----
-
-## Mission
-
-Transform an existing repository into a production-grade system by executing these tasks in order:
-
-1. `.agent/tasks/01-understand.md`
-2. `.agent/tasks/02-diagnose.md`
-3. `.agent/tasks/03-architecture.md`
-4. `.agent/tasks/04-plan.md`
-5. `.agent/tasks/05-refactor.md`
-6. `.agent/tasks/06-validate.md`
-
-Do not skip steps.
+All behavior MUST follow this document.
+If any rule cannot be satisfied, execution MUST stop.
 
 ---
 
-## Execution Rules
+## 2. Execution Model
 
-### 1. Ordered execution
-Always execute tasks in sequence unless the user explicitly asks to run a single task.
+Execution is **state-driven** and **artifact-driven**.
 
-### 2. Artifact handoff
-Each task must produce its declared output artifact, and later tasks must consume those artifacts:
+* State source: `.agent/artifacts/run_state.json`
+* Outputs: `.agent/artifacts/*.md`
+* Tasks: `.agent/tasks/*.md`
+* Templates: `.agent/templates/*.md`
 
-- Task 01 → `orientation_map.md`
-- Task 02 → `diagnostic_report.md`
-- Task 03 → `architecture_spec.md`
-- Task 04 → `refactor_plan.md`
-- Task 05 → `implementation_summary.md`
-- Task 06 → `validation_report.md`
-
-If an expected artifact is missing, regenerate it before continuing.
-
-### 3. No premature editing
-Do not modify source code during:
-- Task 01
-- Task 02
-- Task 03
-- Task 04
-
-Only Task 05 may modify source files.
-
-### 4. One-step refactoring
-When running Task 05, execute **exactly one** atomic step from `refactor_plan.md` unless the user explicitly requests multiple steps.
-
-### 5. Validation after changes
-After every Task 05 run, execute Task 06 before proceeding to another refactor step.
-
-### 6. Traceability
-Every conclusion must map back to repository evidence or prior task artifacts.
-
-### 7. Conservative behavior
-Prefer minimal, safe, reversible changes over broad rewrites.
+No implicit state is allowed.
 
 ---
 
-## Standard Operating Flow
+## 3. Mandatory Task Pipeline
 
-### Phase A — Understand
-Run `.agent/tasks/01-understand.md` and produce `orientation_map.md`.
+Tasks MUST execute in this exact order:
 
-### Phase B — Diagnose
-Run `.agent/tasks/02-diagnose.md` using `orientation_map.md` and produce `diagnostic_report.md`.
+```text
+01-understand → 02-diagnose → 03-architecture → 04-plan → 05-refactor → 06-validate
+```
 
-### Phase C — Architecture
-Run `.agent/tasks/03-architecture.md` using `orientation_map.md` and `diagnostic_report.md`, then produce `architecture_spec.md`.
+### Violations
 
-### Phase D — Plan
-Run `.agent/tasks/04-plan.md` using `diagnostic_report.md` and `architecture_spec.md`, then produce `refactor_plan.md`.
+Execution MUST stop if:
 
-### Phase E — Refactor
-Run `.agent/tasks/05-refactor.md` for one selected step from `refactor_plan.md`. Produce `implementation_summary.md`.
-
-### Phase F — Validate
-Run `.agent/tasks/06-validate.md` using the current codebase plus the generated architecture and plan artifacts. Produce `validation_report.md`.
-
-Repeat Phases E and F until the requested scope is complete or the validation result is acceptable.
+* a task is skipped
+* a required artifact is missing
+* a task is executed out of order
 
 ---
 
-## Task Selection Policy
+## 4. Artifact Contract
 
-### Default behavior
-If the user says:
-- "analyze the repo"
-- "start prodify"
-- "run the workflow"
+### 4.1 General Rules
 
-then begin at Task 01.
+* Every task MUST:
 
-### If the user asks for planning only
-Run Tasks 01 through 04 only.
+  * read declared inputs
+  * write exactly one primary artifact
+* All artifacts MUST:
 
-### If the user asks for code changes
-Ensure Tasks 01 through 04 exist first. Then execute one Task 05 step followed by Task 06.
+  * exist in `.agent/artifacts/`
+  * follow the matching template exactly
+  * contain all required sections
 
-### If the repo has already been analyzed
-Reuse valid artifacts when they still match the current repository state.
+### 4.2 Validation
 
----
+An artifact is INVALID if:
 
-## Output Expectations
+* a required section is missing
+* section structure deviates from template
+* content is empty without justification
 
-When operating, always be explicit about:
-- current task
-- inputs used
-- output artifact produced
-- whether code was modified
-- next recommended step
+If artifact is invalid:
+
+* DO NOT continue
+* mark task as failed
 
 ---
 
-## Guardrails
+## 5. Task Execution Protocol
 
-- Do not refactor without a plan.
-- Do not rewrite the whole codebase unless explicitly requested.
-- Do not silently change public behavior.
-- Do not continue past failed validation without surfacing the failure.
-- Do not invent architecture that is unsupported by evidence.
+For every task:
+
+### Step 1 — Input Verification
+
+* Verify all declared input artifacts exist
+* If missing → STOP
+
+### Step 2 — Load Context
+
+* Load artifacts
+* Extract only relevant structured data
+
+### Step 3 — Execute Task
+
+* Follow task instructions exactly
+* No deviation allowed
+
+### Step 4 — Output Write
+
+* Write artifact using template
+* Do not add extra sections
+
+### Step 5 — Output Validation
+
+* Compare artifact to template
+* If mismatch → FAIL
+
+### Step 6 — State Update
+
+* Update `run_state.json`
+* Append to `task_log.json`
 
 ---
 
-## Preferred Style
+## 6. Refactor Constraints (Task 05)
 
-- Deterministic
-- Evidence-based
-- Minimal-diff
-- Build-safe
-- Production-minded
+### 6.1 Scope
 
----
+* EXACTLY ONE step from `refactor_plan.md`
+* NO additional changes allowed
 
-## Success Condition
+### 6.2 Violations
 
-A successful Prodify run results in:
-- all six artifacts generated in order
-- refactor steps executed incrementally
-- validation performed after changes
-- measurable improvement in structure and readiness
+Execution MUST stop if:
 
+* multiple steps are executed
+* unrelated files are modified
+* behavior changes without being specified
 
 ---
 
-## Automatic Output Flow
+## 7. Validation Enforcement (Task 06)
 
-### Artifact Directory
-All workflow outputs must be stored in `.agent/artifacts/`.
+Task 06 MUST run after EVERY Task 05 execution.
 
-### Task Metadata
-Each task file contains frontmatter declaring:
-- `task_id`
-- `reads`
-- `writes`
-- `next_task`
-- `mode`
+### 7.1 Fail Conditions
 
-Use this metadata to determine task inputs, outputs, and handoff behavior.
+Validation FAIL if:
 
-### State Management
-Use `.agent/artifacts/run_state.json` to track:
-- current task
-- last completed task
-- next task
-- selected refactor step
-- workflow status
+* any critical issue exists
+* regression detected
+* architecture rules violated
 
-Use `.agent/artifacts/task_log.json` to track execution history.
+### 7.2 Pass Conditions
 
-### Automatic Handoff Procedure
-For each task:
-1. Read the task frontmatter.
-2. Verify declared input artifacts exist.
-3. Execute the task.
-4. Write the declared output artifact to `.agent/artifacts/`.
-5. Validate the output against the matching template in `.agent/templates/`.
-6. Update `run_state.json`.
-7. Append an entry to `task_log.json`.
-8. Move to `next_task` unless validation failed.
+Validation PASS only if:
 
-### Loop Behavior
-- Tasks 01 → 04 run once in order.
-- Task 05 executes one refactor step.
-- Task 06 validates the result.
-- If validation fails and refactor steps remain, return to Task 05 for the next step.
-- If validation passes or the requested scope is done, stop.
+* no critical issues
+* no regressions
+* structure improved
 
-### Staleness Guidance
-Treat artifacts as stale when:
-- the repository changed significantly since artifact creation
-- architecture-affecting files changed after planning
-- a refactor step changed files involved in validation
+---
 
-When in doubt, regenerate the smallest necessary upstream artifact before continuing.
+## 8. Loop Control
+
+Execution loop:
+
+```text
+05-refactor → 06-validate → decision
+```
+
+### Rules
+
+* If FAIL → next step MUST execute
+* If PASS → STOP
+* If no steps remain → STOP
+
+---
+
+## 9. Prohibited Behavior
+
+The following are STRICTLY FORBIDDEN:
+
+* modifying code outside Task 05
+* skipping validation
+* generating artifacts without templates
+* adding undocumented fields
+* assuming file existence without verification
+* performing bulk rewrites
+* making implicit decisions
+
+Violation → IMMEDIATE STOP
+
+---
+
+## 10. Required Behavior
+
+The system MUST:
+
+* use relative paths only
+* produce minimal diffs
+* preserve behavior unless explicitly required
+* justify all non-trivial decisions
+* operate only on verified data
+
+---
+
+## 11. Data Integrity Rules
+
+* Artifacts are the ONLY source of truth
+* Do not rely on memory across tasks
+* Do not infer missing data
+* If data is incomplete → STOP
+
+---
+
+## 12. Output Contract (MANDATORY)
+
+Every response MUST include:
+
+* task_id
+* inputs
+* actions performed
+* artifact written
+* code_modified: yes/no
+* next_task
+
+Missing fields → INVALID RESPONSE
+
+---
+
+## 13. Failure Protocol
+
+If any rule is violated:
+
+1. STOP execution
+2. Do NOT proceed
+3. Return:
+
+```text
+STATE_BLOCK:
+status: failed
+task_id: <task>
+reason: <exact failure>
+blocking_artifact: <artifact or file>
+```
+
+---
+
+## 14. State Model
+
+`run_state.json` MUST include:
+
+* current_task
+* last_completed_task
+* next_task
+* completed_steps
+* status
+
+If state is inconsistent → STOP
+
+---
+
+## 15. Determinism Requirements
+
+Given the same:
+
+* repository
+* artifacts
+* templates
+
+The system MUST produce identical outputs.
+
+Non-deterministic behavior is a violation.
+
+---
+
+## 16. Architecture Rules
+
+* Dependencies MUST NOT point outward from Domain
+* Mixed concerns MUST be flagged
+* Violations MUST be explicitly listed
+
+---
+
+## 17. Completion Criteria
+
+Execution is complete ONLY when:
+
+* all required artifacts exist
+* validation passes
+* no remaining critical issues
+* no pending refactor steps
+
+---
+
+## 18. Enforcement Priority
+
+If rules conflict, priority is:
+
+```text
+1. Artifact Contract
+2. Task Order
+3. Refactor Constraints
+4. Validation Rules
+5. Output Contract
+```
+
+Higher priority rules override lower ones.
+
+---
+
+## 19. Zero-Assumption Policy
+
+* Never assume structure
+* Never assume intent
+* Never assume correctness
+
+Everything MUST be verified.

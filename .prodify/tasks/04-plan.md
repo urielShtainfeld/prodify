@@ -1,10 +1,10 @@
 ---
 task_id: 04-plan
 reads:
-  - .agent/artifacts/diagnostic_report.md
-  - .agent/artifacts/architecture_spec.md
+  - .prodify/artifacts/diagnostic_report.md
+  - .prodify/artifacts/architecture_spec.md
 writes:
-  - .agent/artifacts/refactor_plan.md
+  - .prodify/artifacts/refactor_plan.md
 next_task: 05-refactor
 mode: planning
 ---
@@ -51,7 +51,7 @@ mode: planning
    - Make sure the plan can be executed one step at a time by an autonomous coding agent.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.prodify/templates/refactor_plan.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The codebase has an ordered, atomic refactor plan.

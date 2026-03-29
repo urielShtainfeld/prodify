@@ -13,10 +13,10 @@ If any rule cannot be satisfied, execution MUST stop.
 
 Execution is **state-driven** and **artifact-driven**.
 
-* State source: `.agent/artifacts/run_state.json`
-* Outputs: `.agent/artifacts/*.md`
-* Tasks: `.agent/tasks/*.md`
-* Templates: `.agent/templates/*.md`
+* State source: `.prodify/artifacts/run_state.json`
+* Outputs: `.prodify/artifacts/*.md`
+* Tasks: `.prodify/tasks/*.md`
+* Templates: `.prodify/templates/*.md`
 
 No implicit state is allowed.
 
@@ -50,7 +50,7 @@ Execution MUST stop if:
   * write exactly one primary artifact
 * All artifacts MUST:
 
-  * exist in `.agent/artifacts/`
+  * exist in `.prodify/artifacts/`
   * follow the matching template exactly
   * contain all required sections
 

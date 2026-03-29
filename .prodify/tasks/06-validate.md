@@ -1,11 +1,11 @@
 ---
 task_id: 06-validate
 reads:
-  - .agent/artifacts/architecture_spec.md
-  - .agent/artifacts/refactor_plan.md
-  - .agent/artifacts/implementation_summary.md
+  - .prodify/artifacts/architecture_spec.md
+  - .prodify/artifacts/refactor_plan.md
+  - .prodify/artifacts/implementation_summary.md
 writes:
-  - .agent/artifacts/validation_report.md
+  - .prodify/artifacts/validation_report.md
 next_task: 05-refactor
 mode: validation
 ---
@@ -45,7 +45,7 @@ mode: validation
    - Recommend rerunning earlier steps when the result is not production ready.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.prodify/templates/validation_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The refactored code has a strict readiness verdict.

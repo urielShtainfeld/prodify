@@ -1,9 +1,9 @@
 ---
 task_id: 02-diagnose
 reads:
-  - .agent/artifacts/orientation_map.md
+  - .prodify/artifacts/orientation_map.md
 writes:
-  - .agent/artifacts/diagnostic_report.md
+  - .prodify/artifacts/diagnostic_report.md
 next_task: 03-architecture
 mode: analysis
 ---
@@ -50,7 +50,7 @@ mode: analysis
    - Prefer signal over noise.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.prodify/templates/diagnostic_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The codebase has a concrete health snapshot.

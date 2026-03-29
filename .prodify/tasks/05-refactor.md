@@ -1,9 +1,9 @@
 ---
 task_id: 05-refactor
 reads:
-  - .agent/artifacts/refactor_plan.md
+  - .prodify/artifacts/refactor_plan.md
 writes:
-  - .agent/artifacts/implementation_summary.md
+  - .prodify/artifacts/implementation_summary.md
 next_task: 06-validate
 mode: execution
 ---
@@ -40,7 +40,7 @@ mode: execution
    - Summarize exactly what changed and why.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.prodify/templates/implementation_summary.template.md` and fill every section explicitly for `implementation_summary.md`. Do not substitute a freeform structure for the summary artifact.
 
 ## Definition of Done
 - Exactly one plan step is implemented.

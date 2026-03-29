@@ -4,6 +4,6 @@
   "next_task": "01-understand",
   "selected_refactor_step": null,
   "status": "ready",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }

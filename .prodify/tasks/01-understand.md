@@ -2,7 +2,7 @@
 task_id: 01-understand
 reads: []
 writes:
-  - .agent/artifacts/orientation_map.md
+  - .prodify/artifacts/orientation_map.md
 next_task: 02-diagnose
 mode: analysis
 ---
@@ -67,7 +67,7 @@ mode: analysis
    - Mark uncertainty explicitly.
 
 ## Output Specification
-Use `.agent/templates/orientation_map.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+Use `.prodify/templates/orientation_map.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The repository has a clear, evidence-based orientation map.

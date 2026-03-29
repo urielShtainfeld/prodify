@@ -1,7 +1,7 @@
 # Status Output Spec
 
 Date: 2026-03-29
-Scope: `./prodify-agent/.agent/`
+Scope: `./.prodify/`
 
 ## Purpose
 

@@ -1,7 +1,7 @@
 # Artifact Validation Design
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/artifacts/*.md`
+Scope: `./.prodify/artifacts/*.md`
 
 ## Purpose
 Define the validation layer that checks produced markdown artifacts against their matching templates before workflow state may advance.
@@ -64,7 +64,7 @@ Output:
 
 ### `orientation_map.md`
 - Template:
-  - `.agent/templates/orientation_map.template.md`
+  - `.prodify/templates/orientation_map.template.md`
 - Required headings:
   - `# Orientation Map`
   - `## Project Summary`
@@ -79,7 +79,7 @@ Output:
 
 ### `diagnostic_report.md`
 - Template:
-  - `.agent/templates/diagnostic_report.template.md`
+  - `.prodify/templates/diagnostic_report.template.md`
 - Required headings:
   - `# Diagnostic Report`
   - `## Top 5 Priorities`
@@ -95,7 +95,7 @@ Output:
 
 ### `architecture_spec.md`
 - Template:
-  - `.agent/templates/architecture_spec.template.md`
+  - `.prodify/templates/architecture_spec.template.md`
 - Required headings:
   - `# Architecture Spec`
   - `## Detected Pattern`
@@ -109,7 +109,7 @@ Output:
 
 ### `refactor_plan.md`
 - Template:
-  - `.agent/templates/refactor_plan.template.md`
+  - `.prodify/templates/refactor_plan.template.md`
 - Required headings:
   - `# Refactor Plan`
   - `## Summary`
@@ -123,7 +123,7 @@ Output:
 
 ### `implementation_summary.md`
 - Template:
-  - `.agent/templates/implementation_summary.template.md`
+  - `.prodify/templates/implementation_summary.template.md`
 - Required headings:
   - `# Implementation Summary`
   - `## Step Executed`
@@ -139,7 +139,7 @@ Output:
 
 ### `validation_report.md`
 - Template:
-  - `.agent/templates/validation_report.template.md`
+  - `.prodify/templates/validation_report.template.md`
 - Required headings:
   - `# Validation Report`
   - `## Readiness Status`
@@ -258,8 +258,8 @@ Validation fails if any of the following are true:
 ```json
 {
   "task_id": "02-diagnose",
-  "artifact_path": ".agent/artifacts/diagnostic_report.md",
-  "template_path": ".agent/templates/diagnostic_report.template.md",
+  "artifact_path": ".prodify/artifacts/diagnostic_report.md",
+  "template_path": ".prodify/templates/diagnostic_report.template.md",
   "status": "fail",
   "reason": "missing_required_heading",
   "details": [

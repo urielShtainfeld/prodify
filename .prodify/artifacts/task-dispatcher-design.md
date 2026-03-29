@@ -1,7 +1,7 @@
 # Task Dispatcher Design
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/`
+Scope: `./.prodify/`
 
 ## Purpose
 Define how the system selects, prepares, and hands off the correct task using workflow state from `run_state.json`.
@@ -12,19 +12,19 @@ The dispatcher is responsible for choosing the next executable task and assembli
 - mutating workflow state beyond the dispatcher's own error reporting
 
 ## Required Inputs
-- `.agent/artifacts/run_state.json`
+- `.prodify/artifacts/run_state.json`
   - source of truth for `current_task`, `last_completed_task`, `next_task`, `selected_refactor_step`, `completed_step_ids`, and `status`
-- `.agent/tasks/*.md`
+- `.prodify/tasks/*.md`
   - source of task metadata and task ordering via frontmatter
-- `.agent/artifacts/`
+- `.prodify/artifacts/`
   - source of declared input artifacts referenced in task frontmatter
-- `.agent/templates/`
+- `.prodify/templates/`
   - source of task output templates referenced in the selected task's output specification
-- `.agent/artifacts/task-self-validation-spec.md`
+- `.prodify/artifacts/task-self-validation-spec.md`
   - source of pre-run validation requirements and task-specific checks
-- `.agent/artifacts/run-state-design.md`
+- `.prodify/artifacts/run-state-design.md`
   - source of status handling, transition expectations, and resume rules
-- `.agent/artifacts/task_log.json`
+- `.prodify/artifacts/task_log.json`
   - append-only execution history sink after task completion or failure
 
 ## Dispatcher Responsibilities
@@ -39,7 +39,7 @@ The dispatcher is responsible for choosing the next executable task and assembli
 ## Dispatch Algorithm
 
 ### Step 1 - Load State
-1. Read `.agent/artifacts/run_state.json`.
+1. Read `.prodify/artifacts/run_state.json`.
 2. Confirm the required state fields exist:
    - `current_task`
    - `last_completed_task`
@@ -81,13 +81,13 @@ If the resolved target task ID is `null`, missing, or not one of:
 stop with dispatcher failure.
 
 ### Step 4 - Resolve Task File
-Map the task ID to its file in `.agent/tasks/`:
-- `01-understand` -> `.agent/tasks/01-understand.md`
-- `02-diagnose` -> `.agent/tasks/02-diagnose.md`
-- `03-architecture` -> `.agent/tasks/03-architecture.md`
-- `04-plan` -> `.agent/tasks/04-plan.md`
-- `05-refactor` -> `.agent/tasks/05-refactor.md`
-- `06-validate` -> `.agent/tasks/06-validate.md`
+Map the task ID to its file in `.prodify/tasks/`:
+- `01-understand` -> `.prodify/tasks/01-understand.md`
+- `02-diagnose` -> `.prodify/tasks/02-diagnose.md`
+- `03-architecture` -> `.prodify/tasks/03-architecture.md`
+- `04-plan` -> `.prodify/tasks/04-plan.md`
+- `05-refactor` -> `.prodify/tasks/05-refactor.md`
+- `06-validate` -> `.prodify/tasks/06-validate.md`
 
 If the mapped file does not exist, stop with dispatcher failure.
 
@@ -236,7 +236,7 @@ Dispatcher action:
   - calling post-run validation
 
 ### Integration With Task Logging
-- After execution concludes, append one record to `.agent/artifacts/task_log.json` including:
+- After execution concludes, append one record to `.prodify/artifacts/task_log.json` including:
   - dispatched task ID
   - selected refactor step if any
   - execution outcome
@@ -247,12 +247,12 @@ Dispatcher action:
 ```json
 {
   "task_id": "02-diagnose",
-  "task_file": ".agent/tasks/02-diagnose.md",
+  "task_file": ".prodify/tasks/02-diagnose.md",
   "mode": "analysis",
   "inputs": [
-    ".agent/artifacts/orientation_map.md"
+    ".prodify/artifacts/orientation_map.md"
   ],
-  "expected_output": ".agent/artifacts/diagnostic_report.md",
+  "expected_output": ".prodify/artifacts/diagnostic_report.md",
   "selected_refactor_step": null,
   "code_modified": "no",
   "candidate_next_task": "03-architecture"

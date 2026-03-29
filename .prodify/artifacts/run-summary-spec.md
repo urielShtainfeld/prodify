@@ -1,7 +1,7 @@
 # Run Summary Spec
 
 Date: 2026-03-29
-Scope: `./prodify-agent/.agent/`
+Scope: `./.prodify/`
 
 ## Purpose
 
@@ -102,7 +102,7 @@ Next step: <next-action>
 ```text
 Task executed: 02-diagnose
 Result: success
-Artifact written: .agent/artifacts/diagnostic_report.md
+Artifact written: .prodify/artifacts/diagnostic_report.md
 Code modified: no
 Next step: 03-architecture
 ```
@@ -122,7 +122,7 @@ Next step: unblock selected_refactor_step resolution
 ```text
 Task executed: 06-validate
 Result: failed
-Artifact written: .agent/artifacts/validation_report.md
+Artifact written: .prodify/artifacts/validation_report.md
 Code modified: no
 Next step: retry 05-refactor for step-03-extract-service
 ```

@@ -5,14 +5,14 @@ Task: `41-map-phases-to-plan`
 
 ## Scope
 
-This report aligns the repo-level planning tasks with the actual `prodify-agent` execution system.
+This report aligns the repo-level planning tasks with the actual Prodify runtime execution system.
 
 Inputs reviewed:
 
 - `./.agent/tasks/41-map-phases-to-plan.md`
 - `./.agent/tasks/*.md`
-- `./prodify-agent/AGENTS.md`
-- `./prodify-agent/.agent/artifacts/`
+- `./AGENTS.md`
+- `./.prodify/artifacts/`
 - `./planning.md` (missing)
 
 ## Current Planning Model
@@ -20,15 +20,15 @@ Inputs reviewed:
 The current planning model is split across two layers:
 
 1. Repo-level roadmap tasks in `./.agent/tasks/`
-2. Runtime execution rules and runtime task files in `./prodify-agent/.agent/`
+2. Runtime execution rules and runtime task files in `./.prodify/`
 
-The roadmap tasks are grouped by task bands (`11-13`, `21-23`, `31-33`, `41-42`, `51-52`, `61-62`, `71-72`) and form a linear next-task chain. The runtime system is currently defined as a fixed six-task execution pipeline in `./prodify-agent/AGENTS.md`.
+The roadmap tasks are grouped by task bands (`11-13`, `21-23`, `31-33`, `41-42`, `51-52`, `61-62`, `71-72`) and form a linear next-task chain. The runtime system is currently defined as a fixed six-task execution pipeline in `./AGENTS.md`.
 
 ## Phase-To-Task Mapping
 
 | Phase Band | Planning Intent | Repo-Level Tasks | Runtime Surface Affected | Current Output |
 | --- | --- | --- | --- | --- |
-| 10 | Normalize task contracts | `11`, `12`, `13` | `./prodify-agent/.agent/tasks/`, `./prodify-agent/.agent/templates/` | audits and validation spec |
+| 10 | Normalize task contracts | `11`, `12`, `13` | `./.prodify/tasks/`, `./.prodify/templates/` | audits and validation spec |
 | 20 | Define execution state and dispatch | `21`, `22`, `23` | `run_state.json`, dispatcher behavior, artifact validation | design docs |
 | 30 | Define refactor loop control | `31`, `32`, `33` | step selection, Task `05`/`06` loop, completed-step tracking | design docs |
 | 40 | Align planning to execution and decide next actions | `41`, `42` | planning source, next-step resolution | alignment and resolver design |
@@ -38,7 +38,7 @@ The roadmap tasks are grouped by task bands (`11-13`, `21-23`, `31-33`, `41-42`,
 
 ## Execution Model Mapping
 
-The actual runtime system is still centered on this execution pipeline from `./prodify-agent/AGENTS.md`:
+The actual runtime system is still centered on this execution pipeline from `./AGENTS.md`:
 
 `01-understand -> 02-diagnose -> 03-architecture -> 04-plan -> 05-refactor -> 06-validate`
 
@@ -68,16 +68,16 @@ Impact:
 
 ### 2. Ambiguous `.agent` Root
 
-The repo-level task brief refers to `.agent/tasks/` and `.agent/artifacts/` generically, but the executable runtime system lives under `./prodify-agent/.agent/`, while the repo-level workflow framework lives under `./.agent/`.
+The repo-level task brief now points at `.prodify/...` for runtime assets, while the repo-level workflow framework still lives under `./.agent/`.
 
 Impact:
 
-- task instructions can be read against the wrong `.agent` tree
-- planning outputs and runtime outputs can be confused
+- the repo still has two different hidden roots with different responsibilities
+- operators need to distinguish meta-workflow files from runtime files clearly
 
 ### 3. Roadmap Tasks And Runtime Tasks Are Not Explicitly Linked
 
-The repo-level roadmap defines implementation tasks through `72-validate-improvements`, but `./prodify-agent/AGENTS.md` only documents the runtime execution pipeline `01` through `06`.
+The repo-level roadmap defines implementation tasks through `72-validate-improvements`, but `./AGENTS.md` only documents the runtime execution pipeline `01` through `06`.
 
 Impact:
 
@@ -86,7 +86,7 @@ Impact:
 
 ### 4. Runtime Contract Lags Behind New Design Artifacts
 
-Tasks `21-33` produced design documents for run-state logic, task dispatch, artifact validation, step selection, loop control, and completed-step tracking. Those behaviors are not yet reflected in `./prodify-agent/AGENTS.md`.
+Tasks `21-33` produced design documents for run-state logic, task dispatch, artifact validation, step selection, loop control, and completed-step tracking. Those behaviors are not yet reflected in `./AGENTS.md`.
 
 Impact:
 
@@ -95,7 +95,7 @@ Impact:
 
 ### 5. Loop Semantics Conflict Across Sources
 
-`./prodify-agent/AGENTS.md` currently says:
+`./AGENTS.md` currently says:
 
 - FAIL -> next step MUST execute
 - PASS -> STOP
@@ -112,11 +112,11 @@ Impact:
 
 ### 6. Artifact Location Assumptions Differ By Layer
 
-The repo-level task brief for Task `41` writes to `.agent/artifacts/planning-alignment-report.md`, but the actual execution/design artifacts for this initiative are being written under `./prodify-agent/.agent/artifacts/`. The repo-level `.agent/artifacts/` currently contains only the earlier task-header audit.
+The repo-level task brief for Task `41` writes to `.prodify/artifacts/planning-alignment-report.md`, and the actual execution/design artifacts for this initiative now also live under `./.prodify/artifacts/`.
 
 Impact:
 
-- artifact placement is inconsistent unless the plan explicitly distinguishes framework artifacts from runtime artifacts
+- runtime artifact placement is now consistent, but the plan should still distinguish framework artifacts from meta-workflow artifacts
 
 ## Exact Recommendations
 
@@ -136,7 +136,7 @@ It should define:
 Document the two-layer model explicitly in `./planning.md`:
 
 - `./.agent/` = repo-level workflow, review, verification, and meta-task tracking
-- `./prodify-agent/.agent/` = runtime task system, templates, runtime artifacts, and runtime state
+- `./.prodify/` = runtime task system, templates, runtime artifacts, and runtime state
 
 This removes the current ambiguity around generic `.agent/...` references.
 
@@ -165,22 +165,22 @@ That choice matches the newer design artifacts and supports deterministic comple
 
 ### Recommendation 5
 
-Treat `./prodify-agent/AGENTS.md` as the current runtime enforcement document, but do not treat it as complete until its loop/state semantics are reconciled with the design artifacts from Tasks `21-33`.
+Treat `./AGENTS.md` as the current runtime enforcement document, but do not treat it as complete until its loop/state semantics are reconciled with the design artifacts from Tasks `21-33`.
 
 ### Recommendation 6
 
 Adopt an explicit artifact-placement rule in the planning document:
 
 - repo-level workflow artifacts stay under `./.agent/tasks/<task-name>/`
-- runtime system design and execution artifacts stay under `./prodify-agent/.agent/artifacts/`
+- runtime system design and execution artifacts stay under `./.prodify/artifacts/`
 
 ## Recommended Source-Of-Truth Model
 
 Until the plan is formalized, the least ambiguous source-of-truth stack is:
 
 1. `./.agent/tasks/*.md` for roadmap order and meta-task intent
-2. `./prodify-agent/AGENTS.md` for currently enforced runtime rules
-3. `./prodify-agent/.agent/artifacts/*-design.md` for planned runtime evolution
+2. `./AGENTS.md` for currently enforced runtime rules
+3. `./.prodify/artifacts/*-design.md` for planned runtime evolution
 
 This is workable, but it is not fully aligned. A root `planning.md` should consolidate the model before more downstream planning tasks depend on it.
 

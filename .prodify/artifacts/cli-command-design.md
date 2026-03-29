@@ -1,7 +1,7 @@
 # CLI Command Design
 
 Date: 2026-03-29
-Scope: `./prodify-agent/.agent/`
+Scope: `./.prodify/`
 
 ## Purpose
 
@@ -25,14 +25,14 @@ The initial CLI surface contains exactly three commands:
 
 All three commands may read:
 
-- `.agent/artifacts/run_state.json`
-- `.agent/artifacts/task_log.json`
-- `.agent/artifacts/validation_report.md`
+- `.prodify/artifacts/run_state.json`
+- `.prodify/artifacts/task_log.json`
+- `.prodify/artifacts/validation_report.md`
 
 Supporting design references:
 
-- `.agent/artifacts/run-state-design.md`
-- `.agent/artifacts/next-step-resolver-design.md`
+- `.prodify/artifacts/run-state-design.md`
+- `.prodify/artifacts/next-step-resolver-design.md`
 
 ## Command Boundaries
 
@@ -60,12 +60,12 @@ Execute the next allowed unit of work from the current runtime state.
 
 #### Inputs
 - required:
-  - `.agent/artifacts/run_state.json`
+  - `.prodify/artifacts/run_state.json`
 - optional but normally present:
-  - `.agent/artifacts/task_log.json`
-  - `.agent/artifacts/validation_report.md`
-  - runtime task files under `.agent/tasks/`
-  - runtime templates under `.agent/templates/`
+  - `.prodify/artifacts/task_log.json`
+  - `.prodify/artifacts/validation_report.md`
+  - runtime task files under `.prodify/tasks/`
+  - runtime templates under `.prodify/templates/`
 
 #### Behavior
 1. Load and validate `run_state.json`.
@@ -109,9 +109,9 @@ Machine-oriented summary plus concise human feedback:
 Show what Prodify would do next if asked to run now.
 
 #### Inputs
-- `.agent/artifacts/run_state.json`
-- `.agent/artifacts/task_log.json`
-- `.agent/artifacts/validation_report.md`
+- `.prodify/artifacts/run_state.json`
+- `.prodify/artifacts/task_log.json`
+- `.prodify/artifacts/validation_report.md`
 
 #### Behavior
 1. Load runtime state.
@@ -140,9 +140,9 @@ Return:
 Show a concise operator summary of current workflow progress.
 
 #### Inputs
-- `.agent/artifacts/run_state.json`
-- `.agent/artifacts/task_log.json`
-- `.agent/artifacts/validation_report.md`
+- `.prodify/artifacts/run_state.json`
+- `.prodify/artifacts/task_log.json`
+- `.prodify/artifacts/validation_report.md`
 
 #### Behavior
 1. Read current runtime state.
@@ -252,7 +252,7 @@ Example output:
 ```text
 decision: dispatch
 executed_task: 06-validate
-artifact_written: .agent/artifacts/validation_report.md
+artifact_written: .prodify/artifacts/validation_report.md
 state_result: ready
 next_action: evaluate remaining refactor steps
 ```

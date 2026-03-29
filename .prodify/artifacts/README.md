@@ -16,5 +16,5 @@ This folder contains the runtime artifacts produced by the Prodify workflow.
 
 ## Notes
 - Tasks should read and write artifacts through this folder.
-- Output shapes should follow the markdown templates in `.agent/templates/`.
+- Output shapes should follow the markdown templates in `.prodify/templates/`.
 - Artifacts may be regenerated when stale.

@@ -1,10 +1,10 @@
 ---
 task_id: 03-architecture
 reads:
-  - .agent/artifacts/orientation_map.md
-  - .agent/artifacts/diagnostic_report.md
+  - .prodify/artifacts/orientation_map.md
+  - .prodify/artifacts/diagnostic_report.md
 writes:
-  - .agent/artifacts/architecture_spec.md
+  - .prodify/artifacts/architecture_spec.md
 next_task: 04-plan
 mode: analysis
 ---
@@ -52,7 +52,7 @@ mode: analysis
    - Do not choose a target style that the project cannot reasonably evolve toward.
 
 ## Output Specification
-Use `.agent/templates/architecture_spec.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+Use `.prodify/templates/architecture_spec.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The current architecture is classified with confidence.

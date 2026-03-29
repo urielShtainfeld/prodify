@@ -1,7 +1,7 @@
 # Task Log Enhancement Spec
 
 Date: 2026-03-29
-Scope: `./prodify-agent/.agent/artifacts/task_log.json`
+Scope: `./.prodify/artifacts/task_log.json`
 
 ## Purpose
 
@@ -31,7 +31,7 @@ Each entry in `executions` should use this shape:
   "task": "02-diagnose",
   "result": "success",
   "artifacts_touched": [
-    ".agent/artifacts/diagnostic_report.md"
+    ".prodify/artifacts/diagnostic_report.md"
   ],
   "notes": [
     "Validated declared inputs before execution.",
@@ -100,9 +100,9 @@ Rules:
 - for blocked outcomes with no writes, this may be `[]`
 
 Examples:
-- `.agent/artifacts/orientation_map.md`
-- `.agent/artifacts/validation_report.md`
-- `.agent/artifacts/run_state.json`
+- `.prodify/artifacts/orientation_map.md`
+- `.prodify/artifacts/validation_report.md`
+- `.prodify/artifacts/run_state.json`
 
 ### `notes`
 Type:
@@ -184,8 +184,8 @@ A failed entry should:
   "task": "03-architecture",
   "result": "success",
   "artifacts_touched": [
-    ".agent/artifacts/architecture_spec.md",
-    ".agent/artifacts/run_state.json"
+    ".prodify/artifacts/architecture_spec.md",
+    ".prodify/artifacts/run_state.json"
   ],
   "notes": [
     "Architecture spec written and validated.",
@@ -216,8 +216,8 @@ A failed entry should:
   "task": "06-validate",
   "result": "failed",
   "artifacts_touched": [
-    ".agent/artifacts/validation_report.md",
-    ".agent/artifacts/run_state.json"
+    ".prodify/artifacts/validation_report.md",
+    ".prodify/artifacts/run_state.json"
   ],
   "notes": [
     "Validation reported a regression for step-03-extract-service.",

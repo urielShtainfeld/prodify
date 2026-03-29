@@ -1,7 +1,7 @@
 # Task Self-Validation Spec
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/tasks/*.md`
+Scope: `./.prodify/tasks/*.md`
 
 ## Purpose
 Define a lightweight, agent-executable validation contract that every Prodify task should run before execution and after producing its output artifact.
@@ -57,9 +57,9 @@ Run these checks after task execution completes:
 - Expected inputs:
   - none
 - Required template:
-  - `.agent/templates/orientation_map.template.md`
+  - `.prodify/templates/orientation_map.template.md`
 - Expected output:
-  - `.agent/artifacts/orientation_map.md`
+  - `.prodify/artifacts/orientation_map.md`
 - Required post-run headings:
   - `# Orientation Map`
   - `## Project Summary`
@@ -72,11 +72,11 @@ Run these checks after task execution completes:
 
 ### Task 02 - `02-diagnose.md`
 - Expected inputs:
-  - `.agent/artifacts/orientation_map.md`
+  - `.prodify/artifacts/orientation_map.md`
 - Required template:
-  - `.agent/templates/diagnostic_report.template.md`
+  - `.prodify/templates/diagnostic_report.template.md`
 - Expected output:
-  - `.agent/artifacts/diagnostic_report.md`
+  - `.prodify/artifacts/diagnostic_report.md`
 - Required post-run headings:
   - `# Diagnostic Report`
   - `## Top 5 Priorities`
@@ -90,12 +90,12 @@ Run these checks after task execution completes:
 
 ### Task 03 - `03-architecture.md`
 - Expected inputs:
-  - `.agent/artifacts/orientation_map.md`
-  - `.agent/artifacts/diagnostic_report.md`
+  - `.prodify/artifacts/orientation_map.md`
+  - `.prodify/artifacts/diagnostic_report.md`
 - Required template:
-  - `.agent/templates/architecture_spec.template.md`
+  - `.prodify/templates/architecture_spec.template.md`
 - Expected output:
-  - `.agent/artifacts/architecture_spec.md`
+  - `.prodify/artifacts/architecture_spec.md`
 - Required post-run headings:
   - `# Architecture Spec`
   - `## Detected Pattern`
@@ -107,12 +107,12 @@ Run these checks after task execution completes:
 
 ### Task 04 - `04-plan.md`
 - Expected inputs:
-  - `.agent/artifacts/diagnostic_report.md`
-  - `.agent/artifacts/architecture_spec.md`
+  - `.prodify/artifacts/diagnostic_report.md`
+  - `.prodify/artifacts/architecture_spec.md`
 - Required template:
-  - `.agent/templates/refactor_plan.template.md`
+  - `.prodify/templates/refactor_plan.template.md`
 - Expected output:
-  - `.agent/artifacts/refactor_plan.md`
+  - `.prodify/artifacts/refactor_plan.md`
 - Required post-run headings:
   - `# Refactor Plan`
   - `## Summary`
@@ -122,11 +122,11 @@ Run these checks after task execution completes:
 
 ### Task 05 - `05-refactor.md`
 - Expected inputs:
-  - `.agent/artifacts/refactor_plan.md`
+  - `.prodify/artifacts/refactor_plan.md`
 - Required template:
-  - `.agent/templates/implementation_summary.template.md`
+  - `.prodify/templates/implementation_summary.template.md`
 - Expected output:
-  - `.agent/artifacts/implementation_summary.md`
+  - `.prodify/artifacts/implementation_summary.md`
 - Required post-run headings:
   - `# Implementation Summary`
   - `## Step Executed`
@@ -140,13 +140,13 @@ Run these checks after task execution completes:
 
 ### Task 06 - `06-validate.md`
 - Expected inputs:
-  - `.agent/artifacts/architecture_spec.md`
-  - `.agent/artifacts/refactor_plan.md`
-  - `.agent/artifacts/implementation_summary.md`
+  - `.prodify/artifacts/architecture_spec.md`
+  - `.prodify/artifacts/refactor_plan.md`
+  - `.prodify/artifacts/implementation_summary.md`
 - Required template:
-  - `.agent/templates/validation_report.template.md`
+  - `.prodify/templates/validation_report.template.md`
 - Expected output:
-  - `.agent/artifacts/validation_report.md`
+  - `.prodify/artifacts/validation_report.md`
 - Required post-run headings:
   - `# Validation Report`
   - `## Readiness Status`

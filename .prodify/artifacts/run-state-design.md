@@ -1,7 +1,7 @@
 # Run State Design
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/artifacts/run_state.json`
+Scope: `./.prodify/artifacts/run_state.json`
 
 ## Purpose
 Define a deterministic workflow state model for the Prodify task pipeline.
@@ -54,7 +54,7 @@ The mandatory task pipeline is:
 - `artifacts_dir`
   - Type: string
   - Meaning: relative path to the artifact root
-  - Required value: `.agent/artifacts`
+  - Required value: `.prodify/artifacts`
 - `notes`
   - Type: array of strings
   - Meaning: concise state-local operator notes, failure reasons, or resume hints
@@ -83,7 +83,7 @@ Use this when no task has completed yet:
 - `selected_refactor_step: null`
 - `completed_step_ids: []`
 - `status: "ready"`
-- `artifacts_dir: ".agent/artifacts"`
+- `artifacts_dir: ".prodify/artifacts"`
 - `notes: []`
 
 ### Task Start Rule
@@ -205,7 +205,7 @@ To recover from `failed`:
   "selected_refactor_step": null,
   "completed_step_ids": [],
   "status": "ready",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -219,7 +219,7 @@ To recover from `failed`:
   "selected_refactor_step": null,
   "completed_step_ids": [],
   "status": "ready",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -236,7 +236,7 @@ To recover from `failed`:
     "step-02-add-guard-clause"
   ],
   "status": "awaiting_validation",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -253,7 +253,7 @@ To recover from `failed`:
     "step-02-add-guard-clause"
   ],
   "status": "failed",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": [
     "Task 06 reported a regression for step-03-extract-service; retry Task 05 after correcting the step."
   ]
@@ -273,7 +273,7 @@ To recover from `failed`:
     "step-03-extract-service"
   ],
   "status": "complete",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```

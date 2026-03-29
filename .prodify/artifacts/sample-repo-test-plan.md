@@ -84,17 +84,17 @@ After `06-validate`, confirm:
 
 Expected primary artifacts:
 
-- `.agent/artifacts/orientation_map.md`
-- `.agent/artifacts/diagnostic_report.md`
-- `.agent/artifacts/architecture_spec.md`
-- `.agent/artifacts/refactor_plan.md`
-- `.agent/artifacts/implementation_summary.md`
-- `.agent/artifacts/validation_report.md`
+- `.prodify/artifacts/orientation_map.md`
+- `.prodify/artifacts/diagnostic_report.md`
+- `.prodify/artifacts/architecture_spec.md`
+- `.prodify/artifacts/refactor_plan.md`
+- `.prodify/artifacts/implementation_summary.md`
+- `.prodify/artifacts/validation_report.md`
 
 Expected control artifacts:
 
-- `.agent/artifacts/run_state.json`
-- `.agent/artifacts/task_log.json`
+- `.prodify/artifacts/run_state.json`
+- `.prodify/artifacts/task_log.json`
 
 Expected checkpoint evidence:
 

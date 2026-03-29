@@ -1,7 +1,7 @@
 # Step Selection Design
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/artifacts/refactor_plan.md`
+Scope: `./.prodify/artifacts/refactor_plan.md`
 
 ## Purpose
 Define how the system selects the next refactor step automatically for Task `05-refactor`.
@@ -20,8 +20,8 @@ The step selector is not responsible for:
 ## Selection Logic
 
 ### Inputs
-- `.agent/artifacts/refactor_plan.md`
-- `.agent/artifacts/run_state.json`
+- `.prodify/artifacts/refactor_plan.md`
+- `.prodify/artifacts/run_state.json`
 
 Required state fields:
 - `selected_refactor_step`

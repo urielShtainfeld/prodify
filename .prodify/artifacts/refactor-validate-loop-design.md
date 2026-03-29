@@ -1,7 +1,7 @@
 # Refactor Validate Loop Design
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/`
+Scope: `./.prodify/`
 
 ## Purpose
 Define the iterative execution loop that runs one refactor step through Task `05-refactor`, immediately validates it with Task `06-validate`, and decides whether to continue, retry, pause, or stop.

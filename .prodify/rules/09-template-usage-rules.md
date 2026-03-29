@@ -4,7 +4,7 @@
 Ensure every task artifact conforms to a shared markdown schema.
 
 ## Rules
-- Before writing an artifact, consult the matching markdown template in `.agent/templates/`.
+- Before writing an artifact, consult the matching markdown template in `.prodify/templates/`.
 - Preserve required headings and section order from the template.
 - Prefer explicit empty sections or uncertainty notes over invented values.
 - Add optional subsections only when they improve traceability and do not confuse downstream tasks.

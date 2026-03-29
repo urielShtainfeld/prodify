@@ -1,7 +1,7 @@
 # Next Step Resolver Design
 
 Date: 2026-03-29
-Scope: `./prodify-agent/.agent/`
+Scope: `./.prodify/`
 
 ## Purpose
 
@@ -18,7 +18,7 @@ The resolver must use verified state only. It must not infer workflow progress f
 ## Canonical Inputs
 
 ### Primary Input
-- `.agent/artifacts/run_state.json`
+- `.prodify/artifacts/run_state.json`
   - canonical source for:
     - `current_task`
     - `last_completed_task`
@@ -29,19 +29,19 @@ The resolver must use verified state only. It must not infer workflow progress f
     - `notes`
 
 ### Secondary Inputs
-- `.agent/artifacts/task_log.json`
+- `.prodify/artifacts/task_log.json`
   - confirms prior execution history
   - helps distinguish a true fresh start from an inconsistent partial state
-- `.agent/artifacts/validation_report.md`
+- `.prodify/artifacts/validation_report.md`
   - used only when validation state or validation outcome must be confirmed
   - never overrides `run_state.json`
 
 ### Supporting Design Inputs
-- `./prodify-agent/.agent/artifacts/run-state-design.md`
-- `./prodify-agent/.agent/artifacts/task-dispatcher-design.md`
-- `./prodify-agent/.agent/artifacts/refactor-validate-loop-design.md`
-- `./prodify-agent/.agent/artifacts/completed-steps-tracking.md`
-- `./prodify-agent/.agent/artifacts/planning-alignment-report.md`
+- `./.prodify/artifacts/run-state-design.md`
+- `./.prodify/artifacts/task-dispatcher-design.md`
+- `./.prodify/artifacts/refactor-validate-loop-design.md`
+- `./.prodify/artifacts/completed-steps-tracking.md`
+- `./.prodify/artifacts/planning-alignment-report.md`
 
 ## Canonical Resolution Model
 
@@ -393,7 +393,7 @@ Input state:
   "selected_refactor_step": null,
   "completed_step_ids": [],
   "status": "ready",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -421,7 +421,7 @@ Input state:
   "selected_refactor_step": null,
   "completed_step_ids": [],
   "status": "ready",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -451,7 +451,7 @@ Input state:
     "step-01-rename-module"
   ],
   "status": "awaiting_validation",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -481,7 +481,7 @@ Input state:
     "step-01-rename-module"
   ],
   "status": "failed",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": [
     "Task 06 reported a regression for step-03-extract-service."
   ]
@@ -512,7 +512,7 @@ Input state:
   "next_task": "01-understand",
   "selected_refactor_step": null,
   "status": "ready",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```
@@ -546,7 +546,7 @@ Input state:
     "step-03-extract-service"
   ],
   "status": "complete",
-  "artifacts_dir": ".agent/artifacts",
+  "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }
 ```

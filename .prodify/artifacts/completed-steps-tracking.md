@@ -1,7 +1,7 @@
 # Completed Steps Tracking
 
 Date: 2026-03-28
-Scope: `./prodify-agent/.agent/artifacts/run_state.json`
+Scope: `./.prodify/artifacts/run_state.json`
 
 ## Purpose
 Define how completed refactor steps are recorded, reused, protected from duplicate execution, and safely overridden when recovery is necessary.
@@ -9,7 +9,7 @@ Define how completed refactor steps are recorded, reused, protected from duplica
 ## Storage Model
 
 ### Canonical Store
-Use `completed_step_ids` in `.agent/artifacts/run_state.json` as the canonical source of truth for completed refactor steps.
+Use `completed_step_ids` in `.prodify/artifacts/run_state.json` as the canonical source of truth for completed refactor steps.
 
 Field shape:
 ```json

@@ -51,7 +51,7 @@ mode: planning
    - Make sure the plan can be executed one step at a time by an autonomous coding agent.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.agent/templates/refactor_plan.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The codebase has an ordered, atomic refactor plan.

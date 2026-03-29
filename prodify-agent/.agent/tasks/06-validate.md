@@ -45,7 +45,7 @@ mode: validation
    - Recommend rerunning earlier steps when the result is not production ready.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.agent/templates/validation_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The refactored code has a strict readiness verdict.

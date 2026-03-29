@@ -1,6 +1,6 @@
 ---
 task_id: 01-understand
-reads:
+reads: []
 writes:
   - .agent/artifacts/orientation_map.md
 next_task: 02-diagnose
@@ -67,7 +67,7 @@ mode: analysis
    - Mark uncertainty explicitly.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.agent/templates/orientation_map.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The repository has a clear, evidence-based orientation map.

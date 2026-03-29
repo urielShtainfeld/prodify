@@ -52,7 +52,7 @@ mode: analysis
    - Do not choose a target style that the project cannot reasonably evolve toward.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.agent/templates/architecture_spec.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Definition of Done
 - The current architecture is classified with confidence.

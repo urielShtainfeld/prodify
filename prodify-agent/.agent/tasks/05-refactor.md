@@ -40,7 +40,7 @@ mode: execution
    - Summarize exactly what changed and why.
 
 ## Output Specification
-Use the matching markdown template in `.agent/templates/` and fill every section explicitly.
+Use `.agent/templates/implementation_summary.template.md` and fill every section explicitly for `implementation_summary.md`. Do not substitute a freeform structure for the summary artifact.
 
 ## Definition of Done
 - Exactly one plan step is implemented.

@@ -1,8 +1,7 @@
 # Refactor Plan
 
 ## Summary
-- Total phases:
-- Total steps:
+- Total phases: 0
 - Estimated complexity:
 
 ## Phase Breakdown
@@ -12,11 +11,19 @@
 
 ## Steps
 
-### Step: <ID>
+### Step: R01
 - Status: pending
 - Description:
 - Files:
-- Risk:
+- Risk: low
+- Expected outcome:
+- Validation command:
+
+### Step: R02
+- Status: pending
+- Description:
+- Files:
+- Risk: med
 - Expected outcome:
 - Validation command:
 

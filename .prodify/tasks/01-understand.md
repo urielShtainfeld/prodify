@@ -8,16 +8,16 @@ mode: analysis
 ---
 # Task 01 — Understand: Repository Architectural Orientation
 
-## Identity & Mandate
-**Goal:** Transform a raw repository into a machine-parseable architectural map.  
-**Role:** `@Repository-Explorer`  
-**Problem:** Context rot and attention dilution in large codebases.
+## Goal
+Transform a raw repository into a machine-parseable architectural map.
 
-## Data Contract
-**Input:** Absolute path to repository root.  
-**Output:** `orientation_map.md`
+## Scope
+Survey the repository structure conservatively and produce an evidence-based orientation artifact without modifying source code.
 
-## Execution Instructions (SOP)
+## Inputs
+- Absolute path to repository root
+
+## Execution Instructions
 1. **Scan boundaries**
    - Execute a shallow scan of the repository first.
    - Read `.gitignore` to establish the scope of valid source files.
@@ -65,9 +65,16 @@ mode: analysis
    - Be conservative.
    - Do not invent structure that is not supported by repository evidence.
    - Mark uncertainty explicitly.
+   - MUST NOT modify source code.
 
 ## Output Specification
 Use `.prodify/templates/orientation_map.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+
+## Failure Conditions
+- MUST STOP if the repository root cannot be read.
+- MUST STOP if required repository evidence cannot be inspected safely.
+- MUST STOP if the output cannot be produced in `.prodify/templates/orientation_map.template.md`.
+- MUST NOT modify source code.
 
 ## Definition of Done
 - The repository has a clear, evidence-based orientation map.

@@ -10,16 +10,17 @@ mode: analysis
 ---
 # Task 03 — Architecture: Strategic Alignment
 
-## Identity & Mandate
-**Goal:** Define the North Star target architecture and identify structural gaps.  
-**Role:** `@Principal-Architect`  
-**Problem:** Lack of structural intent in evolved legacy systems.
+## Goal
+Define the target architecture and identify structural gaps against the current repository.
 
-## Data Contract
-**Input:** `orientation_map.md` plus `diagnostic_report.md`  
-**Output:** `architecture_spec.md`
+## Scope
+Use the outputs of Tasks 01 and 02 to define a grounded architecture target and explicit structural violations without modifying source code.
 
-## Execution Instructions (SOP)
+## Inputs
+- `.prodify/artifacts/orientation_map.md`
+- `.prodify/artifacts/diagnostic_report.md`
+
+## Execution Instructions
 1. **Pattern detection**
    - Classify the current architecture style as one of:
      - Layered
@@ -50,9 +51,17 @@ mode: analysis
 5. **Decision quality**
    - Be opinionated, but ground all decisions in repository evidence.
    - Do not choose a target style that the project cannot reasonably evolve toward.
+   - MUST NOT modify source code.
 
 ## Output Specification
 Use `.prodify/templates/architecture_spec.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+
+## Failure Conditions
+- MUST STOP if `.prodify/artifacts/orientation_map.md` is missing.
+- MUST STOP if `.prodify/artifacts/diagnostic_report.md` is missing.
+- MUST STOP if the target architecture cannot be grounded in repository evidence.
+- MUST STOP if the output cannot be produced in `.prodify/templates/architecture_spec.template.md`.
+- MUST NOT modify source code.
 
 ## Definition of Done
 - The current architecture is classified with confidence.

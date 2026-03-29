@@ -9,16 +9,17 @@ mode: analysis
 ---
 # Task 02 — Diagnose: Health and Risk Assessment
 
-## Identity & Mandate
-**Goal:** Detect technical debt, architectural erosion, and reliability risks.  
-**Role:** `@Security-Auditor`  
-**Problem:** Work slop and rapid unstructured additions destroying integrity.
+## Goal
+Detect technical debt, architectural erosion, and reliability risks.
 
-## Data Contract
-**Input:** `orientation_map.md` plus read access to mapped modules.  
-**Output:** `diagnostic_report.md`
+## Scope
+Review the repository areas mapped in Task 01 and produce a concrete diagnostic snapshot without modifying source code.
 
-## Execution Instructions (SOP)
+## Inputs
+- `.prodify/artifacts/orientation_map.md`
+- read access to the mapped modules and entrypoints
+
+## Execution Instructions
 1. **Target selection**
    - Prioritize core modules identified in Task 01.
    - Focus first on high-centrality modules, entry points, and shared infrastructure.
@@ -48,9 +49,16 @@ mode: analysis
 6. **Severity discipline**
    - Only elevate issues to critical when they materially affect correctness, operability, or architectural integrity.
    - Prefer signal over noise.
+   - MUST NOT modify source code.
 
 ## Output Specification
 Use `.prodify/templates/diagnostic_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+
+## Failure Conditions
+- MUST STOP if `.prodify/artifacts/orientation_map.md` is missing.
+- MUST STOP if the mapped repository areas cannot be inspected.
+- MUST STOP if the output cannot be produced in `.prodify/templates/diagnostic_report.template.md`.
+- MUST NOT modify source code.
 
 ## Definition of Done
 - The codebase has a concrete health snapshot.

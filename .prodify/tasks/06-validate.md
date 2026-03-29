@@ -11,16 +11,19 @@ mode: validation
 ---
 # Task 06 — Validate: Production Readiness Audit
 
-## Identity & Mandate
-**Goal:** Rigorously audit refactored code against current production standards.  
-**Role:** `@Quality-Gatekeeper`  
-**Problem:** Refactoring drift and hidden regressions.
+## Goal
+Rigorously audit the refactored code against the declared architecture and plan.
 
-## Data Contract
-**Input:** Current source files plus `architecture_spec.md` and `refactor_plan.md`  
-**Output:** `validation_report.md`
+## Scope
+Validate the most recently executed refactor step using the current source files and the required runtime artifacts, without modifying source code.
 
-## Execution Instructions (SOP)
+## Inputs
+- `.prodify/artifacts/architecture_spec.md`
+- `.prodify/artifacts/refactor_plan.md`
+- `.prodify/artifacts/implementation_summary.md`
+- current source files affected by the selected step
+
+## Execution Instructions
 1. **Architectural check**
    - Verify adherence to the layer boundaries defined in Task 03.
    - Call out every remaining boundary violation.
@@ -43,11 +46,24 @@ mode: validation
    - Be strict.
    - Prefer evidence-based failure over optimistic passing.
    - Recommend rerunning earlier steps when the result is not production ready.
+   - MUST run after Task 05 for the same selected step.
+   - MUST explicitly report PASS or FAIL.
+   - MUST NOT modify source code.
 
 ## Output Specification
 Use `.prodify/templates/validation_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+
+## Failure Conditions
+- MUST STOP if `.prodify/artifacts/architecture_spec.md` is missing.
+- MUST STOP if `.prodify/artifacts/refactor_plan.md` is missing.
+- MUST STOP if `.prodify/artifacts/implementation_summary.md` is missing.
+- MUST STOP if Task 05 context for the selected step is missing or ambiguous.
+- MUST STOP if a PASS or FAIL verdict cannot be supported by evidence.
+- MUST STOP if the output cannot be produced in `.prodify/templates/validation_report.template.md`.
+- MUST NOT modify source code.
 
 ## Definition of Done
 - The refactored code has a strict readiness verdict.
 - Category scores are provided.
 - Remaining issues and regressions are clearly listed.
+- The report explicitly states PASS or FAIL.

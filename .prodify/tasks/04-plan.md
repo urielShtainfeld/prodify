@@ -10,16 +10,17 @@ mode: planning
 ---
 # Task 04 — Plan: Actionable Refactoring Strategy
 
-## Identity & Mandate
-**Goal:** Decompose architectural shifts into atomic, testable increments.  
-**Role:** `@DevOps-Planner`  
-**Problem:** Big Bang refactors that break the CI pipeline.
+## Goal
+Decompose architectural shifts into atomic, testable increments.
 
-## Data Contract
-**Input:** `diagnostic_report.md` plus `architecture_spec.md`  
-**Output:** `refactor_plan.md`
+## Scope
+Turn the diagnosis and architecture outputs into a deterministic refactor plan that can be executed one step at a time without modifying source code.
 
-## Execution Instructions (SOP)
+## Inputs
+- `.prodify/artifacts/diagnostic_report.md`
+- `.prodify/artifacts/architecture_spec.md`
+
+## Execution Instructions
 1. **Phase sequencing**
    - Order the refactor into phases:
      1. Hygiene (rename, isolate, add safety checks)
@@ -49,9 +50,19 @@ mode: planning
    - Prefer safe sequencing over aggressive optimization.
    - Avoid steps that combine unrelated concerns.
    - Make sure the plan can be executed one step at a time by an autonomous coding agent.
+   - Every step block MUST use the exact repeated structure required by `.prodify/templates/refactor_plan.template.md`.
+   - Every step MUST have a stable step ID and `Status: pending`.
+   - MUST NOT modify source code.
 
 ## Output Specification
 Use `.prodify/templates/refactor_plan.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+
+## Failure Conditions
+- MUST STOP if `.prodify/artifacts/diagnostic_report.md` is missing.
+- MUST STOP if `.prodify/artifacts/architecture_spec.md` is missing.
+- MUST STOP if any plan step is ambiguous, combines unrelated concerns, or cannot be executed independently.
+- MUST STOP if the output cannot be produced in `.prodify/templates/refactor_plan.template.md`.
+- MUST NOT modify source code.
 
 ## Definition of Done
 - The codebase has an ordered, atomic refactor plan.

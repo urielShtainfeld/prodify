@@ -154,8 +154,8 @@ Execution loop:
 
 ### Rules
 
-* If FAIL → next step MUST execute
-* If PASS → STOP
+* If FAIL → retry or repair the same selected step before continuing
+* If PASS → continue only if more steps remain; otherwise STOP
 * If no steps remain → STOP
 
 ---
@@ -237,7 +237,7 @@ blocking_artifact: <artifact or file>
 * current_task
 * last_completed_task
 * next_task
-* completed_steps
+* completed_step_ids
 * status
 
 If state is inconsistent → STOP

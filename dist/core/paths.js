@@ -1,0 +1,71 @@
+import path from 'node:path';
+export const RUNTIME_PROFILE_NAMES = ['codex', 'claude', 'copilot', 'opencode'];
+export const KNOWN_TARGETS = [...RUNTIME_PROFILE_NAMES];
+export const USER_OWNED_CANONICAL_PATHS = [
+    '.prodify/AGENTS.md',
+    '.prodify/project.md',
+    '.prodify/planning.md'
+];
+export const LEGACY_TARGET_PATH_DEFINITIONS = {
+    codex: {
+        agent: 'codex',
+        status: 'supported',
+        canonicalSources: ['.prodify/AGENTS.md'],
+        targetPath: 'AGENTS.md'
+    },
+    claude: {
+        agent: 'claude',
+        status: 'planned',
+        canonicalSources: ['.prodify/AGENTS.md'],
+        targetPath: 'CLAUDE.md'
+    },
+    copilot: {
+        agent: 'copilot',
+        status: 'planned',
+        canonicalSources: ['.prodify/AGENTS.md', '.prodify/project.md'],
+        targetPath: '.github/copilot-instructions.md'
+    },
+    opencode: {
+        agent: 'opencode',
+        status: 'experimental',
+        canonicalSources: ['.prodify/AGENTS.md'],
+        targetPath: '.opencode/AGENTS.md'
+    }
+};
+export const REQUIRED_CANONICAL_PATHS = [
+    '.prodify/AGENTS.md',
+    '.prodify/project.md',
+    '.prodify/planning.md',
+    '.prodify/runtime-commands.md',
+    '.prodify/state.json',
+    '.prodify/tasks/README.md',
+    '.prodify/rules/README.md',
+    '.prodify/templates/README.md',
+    '.prodify/version.json'
+];
+export function isRuntimeProfileName(value) {
+    return typeof value === 'string' && RUNTIME_PROFILE_NAMES.includes(value);
+}
+export function normalizeRepoRelativePath(relativePath) {
+    const normalized = relativePath.replaceAll('\\', '/');
+    return path.posix.normalize(normalized).replace(/^\/+/, '');
+}
+export function resolveRepoPath(repoRoot, relativePath) {
+    return path.join(repoRoot, ...normalizeRepoRelativePath(relativePath).split('/'));
+}
+export function getTargetDefinition(agent) {
+    if (!isRuntimeProfileName(agent)) {
+        return null;
+    }
+    return LEGACY_TARGET_PATH_DEFINITIONS[agent] ?? null;
+}
+export function resolveTargetPath(repoRoot, agent) {
+    const target = getTargetDefinition(agent);
+    if (!target) {
+        return null;
+    }
+    return resolveRepoPath(repoRoot, target.targetPath);
+}
+export function resolveCanonicalPath(repoRoot, relativePath) {
+    return resolveRepoPath(repoRoot, relativePath);
+}

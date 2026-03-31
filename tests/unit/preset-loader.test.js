@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { loadDefaultPreset } from '../../src/presets/loader.js';
+import { loadDefaultPreset } from '../../dist/presets/loader.js';
 
 test('default preset loads required canonical files', async () => {
   const preset = await loadDefaultPreset();

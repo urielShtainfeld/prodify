@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { bootstrapFlowState, completeFlowStage, getResumeDecision, stageToTaskId, startFlowExecution } from '../../src/core/flow-state.js';
-import { buildExecutionPrompt, buildRuntimeCommandReference } from '../../src/core/prompt-builder.js';
-import { createInitialRuntimeState } from '../../src/core/state.js';
+import { bootstrapFlowState, completeFlowStage, getResumeDecision, stageToTaskId, startFlowExecution } from '../../dist/core/flow-state.js';
+import { buildBootstrapPrompt, buildExecutionPrompt, buildRuntimeCommandReference } from '../../dist/core/prompt-builder.js';
+import { createInitialRuntimeState } from '../../dist/core/state.js';
 
 const presetMetadata = {
   name: 'default',
-  version: '2.0.0'
+  version: '3.0.0',
+  schemaVersion: '3'
 };
 
 test('runtime bootstrap initializes the first stage deterministically', () => {
@@ -71,6 +72,10 @@ test('prompt builder includes runtime commands and current task context', () => 
 
   assert.match(buildRuntimeCommandReference(), /\$prodify-init/);
   assert.match(buildRuntimeCommandReference({ concise: true }), /\$prodify-resume/);
+  assert.match(buildBootstrapPrompt('codex'), /Read \.prodify\/AGENTS\.md/);
+  assert.match(buildBootstrapPrompt('claude'), /Read \.prodify\/AGENTS\.md/);
+  assert.match(buildBootstrapPrompt('copilot'), /Read \.prodify\/AGENTS\.md/);
+  assert.match(buildBootstrapPrompt('opencode'), /Read \.prodify\/AGENTS\.md/);
   assert.match(buildExecutionPrompt(bootstrapped), /Current task: 01-understand/);
   assert.equal(stageToTaskId('validate'), '06-validate');
 });

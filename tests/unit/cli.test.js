@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { COMMANDS, PUBLIC_COMMANDS, renderHelp, runCli } from '../../src/cli.js';
+import { COMMANDS, PUBLIC_COMMANDS, renderHelp, runCli } from '../../dist/cli.js';
 import { memoryStream } from './helpers.js';
 
 test('cli help includes all command names', async () => {

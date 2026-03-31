@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { generateCodexContent } from '../../src/generators/codex.js';
+import { generateCodexContent } from '../../dist/generators/codex.js';
 import { createTempRepo } from './helpers.js';
 
 test('codex generator prepends header and preserves body', async () => {

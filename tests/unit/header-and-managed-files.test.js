@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeBodyFingerprint, detectManagedFileState, parseManagedFileHeader } from '../../src/core/managed-files.js';
-import { renderManagedFileHeader } from '../../src/generators/header.js';
+import { computeBodyFingerprint, detectManagedFileState, parseManagedFileHeader } from '../../dist/core/managed-files.js';
+import { renderManagedFileHeader } from '../../dist/generators/header.js';
 
 test('header renders correctly for codex', () => {
   const bodyFingerprint = computeBodyFingerprint('# Body\n');

@@ -4,8 +4,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { resolveRepoRoot } from '../../src/core/repo-root.js';
-import { resolveCanonicalPath, resolveTargetPath } from '../../src/core/paths.js';
+import { resolveRepoRoot } from '../../dist/core/repo-root.js';
+import { resolveCanonicalPath, resolveTargetPath } from '../../dist/core/paths.js';
 import { createTempRepo } from './helpers.js';
 
 test('repo root resolves from .prodify presence', async () => {
@@ -32,7 +32,7 @@ test('repo root resolves from .git during bootstrap', async () => {
   assert.equal(resolved, repoRoot);
 });
 
-test('target path resolution matches documented paths', () => {
+test('legacy compatibility target paths still resolve deterministically', () => {
   const repoRoot = '/tmp/example-repo';
 
   assert.equal(resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md'), '/tmp/example-repo/.prodify/AGENTS.md');

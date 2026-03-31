@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "preset_name": "default",
-  "preset_version": "2.0.0",
+  "preset_version": "3.0.0",
   "primary_agent": null,
   "runtime": {
     "status": "not_bootstrapped",

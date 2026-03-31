@@ -13,13 +13,20 @@ function parseAgent(args) {
   return args[agentFlagIndex + 1];
 }
 
+function hasForceFlag(args) {
+  return args.includes('--force');
+}
+
 export async function runInstallCommand(args, context) {
   const repoRoot = await resolveRepoRoot({
     cwd: context.cwd
   });
   const agent = parseAgent(args);
-  const result = await installTarget(repoRoot, agent);
+  const result = await installTarget(repoRoot, agent, {
+    force: hasForceFlag(args)
+  });
 
-  context.stdout.write(`Installed ${result.agent} compatibility file at ${result.targetPath}\n`);
+  const statusSuffix = result.status === 'supported' ? '' : ` (${result.status})`;
+  context.stdout.write(`installed ${result.agent}${statusSuffix}: updated ${result.targetPath}\n`);
   return 0;
 }

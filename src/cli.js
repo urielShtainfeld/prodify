@@ -17,8 +17,8 @@ export function renderHelp() {
     '',
     'Usage:',
     '  prodify init',
-    '  prodify install --agent <target>',
-    '  prodify sync [--agent <target>]',
+    '  prodify install --agent <target> [--force]',
+    '  prodify sync [--agent <target>] [--force]',
     '  prodify doctor'
   ].join('\n');
 }

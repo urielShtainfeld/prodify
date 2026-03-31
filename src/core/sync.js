@@ -1,25 +1,44 @@
 import fs from 'node:fs/promises';
 
-import { parseManagedFileHeader } from './managed-files.js';
+import { ProdifyError } from './errors.js';
+import { detectManagedFileState, parseManagedFileHeader } from './managed-files.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
-import { KNOWN_TARGETS, resolveTargetPath } from './paths.js';
-import { getEnabledGenerator } from './targets.js';
+import { resolveTargetPath } from './paths.js';
+import { getKnownTargetMetadata, listRegisteredTargets } from './targets.js';
 
 export async function syncManagedTargets(repoRoot, options = {}) {
   const requestedAgent = options.agent ?? null;
-  const agents = requestedAgent ? [requestedAgent] : KNOWN_TARGETS;
+  const force = options.force ?? false;
+  const requestedTarget = requestedAgent ? getKnownTargetMetadata(requestedAgent) : null;
+
+  if (requestedAgent && !requestedTarget) {
+    throw new ProdifyError(`Unknown target agent: ${requestedAgent}`, {
+      code: 'UNKNOWN_TARGET'
+    });
+  }
+
+  const agents = requestedAgent
+    ? [requestedTarget]
+    : listRegisteredTargets();
   const results = [];
 
-  for (const agent of agents) {
-    const generator = getEnabledGenerator(agent);
-    if (!generator) {
+  for (const target of agents) {
+    const agent = target.agent;
+    const targetPath = resolveTargetPath(repoRoot, agent);
+
+    if (!target.enabled || !target.generator) {
+      results.push({
+        agent,
+        targetPath,
+        status: 'not-enabled'
+      });
       continue;
     }
 
-    const targetPath = resolveTargetPath(repoRoot, agent);
+    const expectedContent = await target.generator(repoRoot);
+
     if (!(await pathExists(targetPath))) {
       if (requestedAgent) {
-        const expectedContent = await generator(repoRoot);
         await writeFileEnsuringDir(targetPath, expectedContent);
         results.push({ agent, targetPath, status: 'updated' });
       }
@@ -34,9 +53,14 @@ export async function syncManagedTargets(repoRoot, options = {}) {
       continue;
     }
 
-    const expectedContent = await generator(repoRoot);
-    if (existingContent === expectedContent) {
+    const state = detectManagedFileState(existingContent, expectedContent);
+    if (state.state === 'unchanged') {
       results.push({ agent, targetPath, status: 'unchanged' });
+      continue;
+    }
+
+    if (state.state === 'conflict' && !force) {
+      results.push({ agent, targetPath, status: 'blocked' });
       continue;
     }
 
@@ -44,5 +68,6 @@ export async function syncManagedTargets(repoRoot, options = {}) {
     results.push({ agent, targetPath, status: 'updated' });
   }
 
+  results.sort((left, right) => left.agent.localeCompare(right.agent));
   return results;
 }

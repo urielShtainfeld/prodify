@@ -18,5 +18,6 @@ test('cli help includes all command names', async () => {
 
 test('command registry exposes the four primary commands', () => {
   assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'install', 'sync']);
-  assert.match(renderHelp(), /prodify install --agent <target>/);
+  assert.match(renderHelp(), /prodify install --agent <target> \[--force\]/);
+  assert.match(renderHelp(), /prodify sync \[--agent <target>\] \[--force\]/);
 });

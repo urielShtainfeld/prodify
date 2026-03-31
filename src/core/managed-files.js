@@ -1,4 +1,5 @@
 import { KNOWN_TARGETS } from './paths.js';
+import crypto from 'node:crypto';
 
 const HEADER_START = '<!--';
 const HEADER_END = '-->';
@@ -49,6 +50,7 @@ export function parseManagedFileHeader(content) {
   const targetAgent = metadata['Target agent'];
   const canonicalSource = metadata['Canonical source'];
   const regenerateWith = metadata['Regenerate with'];
+  const bodyFingerprint = metadata['Body fingerprint'];
 
   if (!targetAgent || !KNOWN_TARGETS.includes(targetAgent) || !canonicalSource || !regenerateWith) {
     return null;
@@ -58,6 +60,7 @@ export function parseManagedFileHeader(content) {
     targetAgent,
     canonicalSources: canonicalSource.split(',').map((item) => item.trim()).filter(Boolean),
     regenerateWith,
+    bodyFingerprint: bodyFingerprint ?? null,
     manualEditsWarning: Boolean(metadata.manualEditsWarning),
     headerLength: endIndex + HEADER_END.length
   };
@@ -65,4 +68,63 @@ export function parseManagedFileHeader(content) {
 
 export function isManagedFileContent(content) {
   return parseManagedFileHeader(content) !== null;
+}
+
+export function extractManagedBody(content, headerLength) {
+  let body = content.slice(headerLength);
+
+  if (body.startsWith('\r\n\r\n')) {
+    return body.slice(4);
+  }
+
+  if (body.startsWith('\n\n')) {
+    return body.slice(2);
+  }
+
+  if (body.startsWith('\r\n')) {
+    return body.slice(2);
+  }
+
+  if (body.startsWith('\n')) {
+    return body.slice(1);
+  }
+
+  return body;
+}
+
+export function computeBodyFingerprint(body) {
+  return crypto.createHash('sha256').update(body, 'utf8').digest('hex');
+}
+
+export function detectManagedFileState(existingContent, expectedContent) {
+  const existingHeader = parseManagedFileHeader(existingContent);
+  if (!existingHeader) {
+    return {
+      state: 'unmanaged',
+      header: null
+    };
+  }
+
+  const expectedHeader = parseManagedFileHeader(expectedContent);
+  const currentBody = extractManagedBody(existingContent, existingHeader.headerLength);
+  const currentFingerprint = computeBodyFingerprint(currentBody);
+
+  if (existingHeader.bodyFingerprint && existingHeader.bodyFingerprint !== currentFingerprint) {
+    return {
+      state: 'conflict',
+      header: existingHeader
+    };
+  }
+
+  if (existingContent === expectedContent) {
+    return {
+      state: 'unchanged',
+      header: existingHeader
+    };
+  }
+
+  return {
+    state: 'outdated',
+    header: expectedHeader ?? existingHeader
+  };
 }

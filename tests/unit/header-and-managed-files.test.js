@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeBodyFingerprint, detectManagedFileState, parseManagedFileHeader } from '../../src/core/managed-files.js';
-import { renderManagedFileHeader } from '../../src/generators/header.js';
+import { computeBodyFingerprint, detectManagedFileState, parseManagedFileHeader } from '../../dist/core/managed-files.js';
+import { renderManagedFileHeader } from '../../dist/generators/header.js';
 
 test('header renders correctly for codex', () => {
   const bodyFingerprint = computeBodyFingerprint('# Body\n');
   const header = renderManagedFileHeader({
     agent: 'codex',
     canonicalSources: ['.prodify/AGENTS.md'],
-    regenerateCommand: 'prodify sync --agent codex',
+    regenerateCommand: 'prodify update',
     bodyFingerprint
   });
 
@@ -24,7 +24,7 @@ test('managed file detection works for valid header', () => {
   const content = `${renderManagedFileHeader({
     agent: 'codex',
     canonicalSources: ['.prodify/AGENTS.md'],
-    regenerateCommand: 'prodify sync --agent codex',
+    regenerateCommand: 'prodify update',
     bodyFingerprint
   })}\n\n# Body\n`;
 
@@ -43,7 +43,7 @@ test('managed file state detects manual-edit conflicts', () => {
   const expected = `${renderManagedFileHeader({
     agent: 'codex',
     canonicalSources: ['.prodify/AGENTS.md'],
-    regenerateCommand: 'prodify sync --agent codex',
+    regenerateCommand: 'prodify update',
     bodyFingerprint: computeBodyFingerprint(body)
   })}\n\n${body}`;
   const drifted = expected.replace('# Body', '# Drifted');

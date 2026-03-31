@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { COMMANDS, renderHelp, runCli } from '../../src/cli.js';
+import { COMMANDS, PUBLIC_COMMANDS, renderHelp, runCli } from '../../dist/cli.js';
 import { memoryStream } from './helpers.js';
 
 test('cli help includes all command names', async () => {
@@ -11,13 +11,16 @@ test('cli help includes all command names', async () => {
 
   assert.equal(exitCode, 0);
   assert.match(stdout.toString(), /\binit\b/);
-  assert.match(stdout.toString(), /\binstall\b/);
-  assert.match(stdout.toString(), /\bsync\b/);
+  assert.match(stdout.toString(), /\bstatus\b/);
   assert.match(stdout.toString(), /\bdoctor\b/);
+  assert.match(stdout.toString(), /\bupdate\b/);
+  assert.doesNotMatch(stdout.toString(), /\binstall\b/);
+  assert.doesNotMatch(stdout.toString(), /\bsync\b/);
 });
 
-test('command registry exposes the four primary commands', () => {
-  assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'install', 'sync']);
-  assert.match(renderHelp(), /prodify install --agent <target> \[--force\]/);
-  assert.match(renderHelp(), /prodify sync \[--agent <target>\] \[--force\]/);
+test('command registry keeps legacy shims but exposes the lifecycle commands publicly', () => {
+  assert.deepEqual(PUBLIC_COMMANDS, ['init', 'status', 'doctor', 'update']);
+  assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'install', 'status', 'sync', 'update']);
+  assert.match(renderHelp(), /prodify status/);
+  assert.match(renderHelp(), /prodify update/);
 });

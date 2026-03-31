@@ -1,0 +1,24 @@
+{
+  "schema_version": "1",
+  "preset_name": "default",
+  "preset_version": "3.0.0",
+  "primary_agent": null,
+  "runtime": {
+    "status": "not_bootstrapped",
+    "mode": null,
+    "selected_agent": null,
+    "current_stage": null,
+    "current_task_id": null,
+    "completed_stages": [],
+    "awaiting_user_validation": false,
+    "last_validation_result": "unknown",
+    "resumable": false,
+    "blocked_reason": null,
+    "next_action": "$prodify-init",
+    "timestamps": {
+      "bootstrapped_at": null,
+      "last_transition_at": null,
+      "completed_at": null
+    }
+  }
+}

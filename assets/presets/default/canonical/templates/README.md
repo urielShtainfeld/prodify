@@ -1,3 +1,3 @@
-# Canonical Templates
+# Prodify Templates
 
-Store canonical artifact templates here.
+This directory is reserved for repository-local templates that the runtime may need while executing the Prodify workflow.

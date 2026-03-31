@@ -3,7 +3,8 @@ import { runDoctor } from '../core/doctor.js';
 
 export async function runDoctorCommand(args, context) {
   const repoRoot = await resolveRepoRoot({
-    cwd: context.cwd
+    cwd: context.cwd,
+    allowBootstrap: true
   });
   const result = await runDoctor(repoRoot);
 

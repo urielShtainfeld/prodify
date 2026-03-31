@@ -1,61 +1,72 @@
 # Prodify
 
-Prodify is a repository-local CLI for managing canonical agent guidance in `.prodify/` and generating compatibility files for supported coding agents.
+Prodify turns AI- or vibe-coded repositories into production-grade code through a deterministic, agent-native workflow.
 
-## What It Does
+## Problem
 
-- bootstraps a canonical `.prodify/` workspace with `prodify init`
-- generates managed compatibility files for supported agents
-- keeps generated files synchronized with canonical source files
-- checks repository health and drift with `prodify doctor`
+Fast AI-generated code tends to drift into inconsistent structure, weak validation, and unclear ownership. Prodify gives that repo a repeatable upgrade path instead of relying on ad hoc prompting.
 
-## Current Support
+## Product
 
-Implemented targets:
-- Codex → `AGENTS.md`
-- Claude → `CLAUDE.md`
-- Copilot → `.github/copilot-instructions.md`
-- OpenCode → `.opencode/AGENTS.md`
+Prodify has two layers:
 
-## CLI Commands
+- external CLI for repository setup and health
+- inside-agent runtime commands for actually running the transformation flow
 
-```sh
-node ./src/index.js --help
-```
+The canonical source of truth lives in `.prodify/`. Generated agent files are adapters. The coding agent is the execution engine.
 
-Command surface:
+## Architecture
+
+External CLI:
+
 - `prodify init`
-- `prodify install --agent <target> [--force]`
-- `prodify sync [--agent <target>] [--force]`
+- `prodify status`
 - `prodify doctor`
+- `prodify update`
 
-## Basic Flow
+Inside the agent:
 
-1. Initialize canonical files:
+- `$prodify-init`
+- `$prodify-execute`
+- `$prodify-execute --auto`
+- `$prodify-resume`
+
+## User Flow
+
+1. Initialize the repository:
 
 ```sh
 node ./src/index.js init
 ```
 
-2. Install an agent target:
+2. Open the supported agent you want to use:
 
-```sh
-node ./src/index.js install --agent codex
-```
+- Codex
+- Claude
+- Copilot
+- OpenCode
 
-3. Edit canonical files under `.prodify/`.
+3. Inside that agent, run `$prodify-init`.
 
-4. Regenerate managed targets:
+4. Run `$prodify-execute` for stage-by-stage execution, or `$prodify-execute --auto` to continue until a hard stop.
 
-```sh
-node ./src/index.js sync
-```
+5. If the flow pauses for validation or is interrupted, continue with `$prodify-resume`.
 
-5. Validate repo health:
+6. Use `prodify status`, `prodify doctor`, and `prodify update` from the CLI to inspect or refresh the repo-side scaffolding.
 
-```sh
-node ./src/index.js doctor
-```
+## Repo Model
+
+- `.prodify/` is canonical.
+- Generated compatibility files are reproducible adapters.
+- `.prodify/state.json` stores the runtime control state.
+- The agent reads the Prodify runtime model and executes the workflow stages.
+
+## Supported Agents
+
+- Codex → `AGENTS.md`
+- Claude → `CLAUDE.md`
+- Copilot → `.github/copilot-instructions.md`
+- OpenCode → `.opencode/AGENTS.md`
 
 ## Development
 

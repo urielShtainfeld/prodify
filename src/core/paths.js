@@ -1,6 +1,11 @@
 import path from 'node:path';
 
 export const KNOWN_TARGETS = ['codex', 'claude', 'copilot', 'opencode'];
+export const USER_OWNED_CANONICAL_PATHS = [
+  '.prodify/AGENTS.md',
+  '.prodify/project.md',
+  '.prodify/planning.md'
+];
 
 export const TARGET_DEFINITIONS = {
   codex: {
@@ -33,6 +38,11 @@ export const REQUIRED_CANONICAL_PATHS = [
   '.prodify/AGENTS.md',
   '.prodify/project.md',
   '.prodify/planning.md',
+  '.prodify/runtime-commands.md',
+  '.prodify/state.json',
+  '.prodify/tasks/README.md',
+  '.prodify/rules/README.md',
+  '.prodify/templates/README.md',
   '.prodify/version.json'
 ];
 

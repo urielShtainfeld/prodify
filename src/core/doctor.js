@@ -3,11 +3,15 @@ import fs from 'node:fs/promises';
 import { detectManagedFileState, parseManagedFileHeader } from './managed-files.js';
 import { REQUIRED_CANONICAL_PATHS, resolveCanonicalPath, resolveRepoPath, resolveTargetPath } from './paths.js';
 import { pathExists } from './fs.js';
+import { readRuntimeState } from './state.js';
 import { listRegisteredTargets } from './targets.js';
+import { inspectVersionStatus } from './version-checks.js';
+import { loadDefaultPreset } from '../presets/loader.js';
 import { parseVersionMetadata } from '../presets/version.js';
 
 export async function runDoctor(repoRoot) {
   const checks = [];
+  const preset = await loadDefaultPreset();
   const prodifyPath = resolveRepoPath(repoRoot, '.prodify');
   const prodifyExists = await pathExists(prodifyPath);
   if (!prodifyExists) {
@@ -54,6 +58,32 @@ export async function runDoctor(repoRoot) {
         details: '.prodify/version.json is malformed'
       });
     }
+  }
+
+  const versionStatus = await inspectVersionStatus(repoRoot, preset.metadata);
+  checks.push({
+    label: 'canonical/schema',
+    ok: versionStatus.status === 'current',
+    details: versionStatus.status === 'current'
+      ? `preset ${preset.metadata.name}@${preset.metadata.version} matches`
+      : `version status is ${versionStatus.status}`
+  });
+
+  try {
+    await readRuntimeState(repoRoot, {
+      presetMetadata: preset.metadata
+    });
+    checks.push({
+      label: 'runtime/state',
+      ok: true,
+      details: '.prodify/state.json is readable'
+    });
+  } catch {
+    checks.push({
+      label: 'runtime/state',
+      ok: false,
+      details: '.prodify/state.json is missing or malformed'
+    });
   }
 
   for (const target of listRegisteredTargets()) {

@@ -1,3 +1,3 @@
-# Canonical Rules
+# Prodify Rules
 
-Store reusable canonical rules here.
+This directory is reserved for rule documents that refine the default workflow for the current repository.

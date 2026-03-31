@@ -4,6 +4,7 @@ import { resolveRepoPath } from '../core/paths.js';
 import { pathExists } from '../core/fs.js';
 import { ProdifyError } from '../core/errors.js';
 import { loadDefaultPreset } from '../presets/loader.js';
+import { syncManagedTargets } from '../core/sync.js';
 
 export async function runInitCommand(args, context) {
   const repoRoot = await resolveRepoRoot({
@@ -24,6 +25,11 @@ export async function runInitCommand(args, context) {
     await writeFileEnsuringDir(resolveRepoPath(repoRoot, entry.relativePath), entry.content);
   }
 
+  await syncManagedTargets(repoRoot, {
+    createMissing: true
+  });
+
   context.stdout.write(`Initialized Prodify in ${repoRoot}\n`);
+  context.stdout.write('Prepared runtime adapters for codex, claude, copilot, opencode\n');
   return 0;
 }

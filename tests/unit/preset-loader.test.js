@@ -10,6 +10,8 @@ test('default preset loads required canonical files', async () => {
   assert.ok(paths.includes('.prodify/AGENTS.md'));
   assert.ok(paths.includes('.prodify/project.md'));
   assert.ok(paths.includes('.prodify/planning.md'));
+  assert.ok(paths.includes('.prodify/runtime-commands.md'));
+  assert.ok(paths.includes('.prodify/state.json'));
   assert.ok(paths.includes('.prodify/version.json'));
   assert.ok(paths.includes('.prodify/tasks/README.md'));
   assert.ok(paths.includes('.prodify/rules/README.md'));

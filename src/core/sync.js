@@ -9,6 +9,7 @@ import { getKnownTargetMetadata, listRegisteredTargets } from './targets.js';
 export async function syncManagedTargets(repoRoot, options = {}) {
   const requestedAgent = options.agent ?? null;
   const force = options.force ?? false;
+  const createMissing = options.createMissing ?? Boolean(requestedAgent);
   const requestedTarget = requestedAgent ? getKnownTargetMetadata(requestedAgent) : null;
 
   if (requestedAgent && !requestedTarget) {
@@ -38,7 +39,7 @@ export async function syncManagedTargets(repoRoot, options = {}) {
     const expectedContent = await target.generator(repoRoot);
 
     if (!(await pathExists(targetPath))) {
-      if (requestedAgent) {
+      if (createMissing) {
         await writeFileEnsuringDir(targetPath, expectedContent);
         results.push({ agent, targetPath, status: 'updated' });
       }

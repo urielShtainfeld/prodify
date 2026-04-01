@@ -1,10 +1,11 @@
 import fs from 'node:fs/promises';
 
 import { writeFileEnsuringDir } from './fs.js';
-import { USER_OWNED_CANONICAL_PATHS, resolveRepoPath } from './paths.js';
+import { USER_OWNED_CANONICAL_PATHS, USER_OWNED_CANONICAL_PREFIXES, resolveRepoPath } from './paths.js';
 import { loadDefaultPreset } from '../presets/loader.js';
 import { readRuntimeState, createInitialRuntimeState, normalizeRuntimeState, serializeRuntimeState } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
+import { synchronizeRuntimeContracts } from '../contracts/compiler.js';
 import type { UpdateSummary } from '../types.js';
 
 export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummary> {
@@ -16,8 +17,9 @@ export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummar
   for (const entry of preset.entries) {
     const targetPath = resolveRepoPath(repoRoot, entry.relativePath);
     const isUserOwned = (USER_OWNED_CANONICAL_PATHS as readonly string[]).includes(entry.relativePath);
+    const isUserOwnedByPrefix = (USER_OWNED_CANONICAL_PREFIXES as readonly string[]).some((prefix) => entry.relativePath.startsWith(prefix));
 
-    if (isUserOwned) {
+    if (isUserOwned || isUserOwnedByPrefix) {
       try {
         await fs.access(targetPath);
         preservedCanonical.push(entry.relativePath);
@@ -52,10 +54,13 @@ export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummar
     writtenCanonical.push(entry.relativePath);
   }
 
+  const compiledContracts = await synchronizeRuntimeContracts(repoRoot);
+
   return {
     versionStatus: versionStatus.status,
     schemaMigrationRequired: versionStatus.schemaMigrationRequired,
     writtenCanonicalCount: writtenCanonical.length,
-    preservedCanonicalCount: preservedCanonical.length
+    preservedCanonicalCount: preservedCanonical.length,
+    compiledContractCount: compiledContracts.length
   };
 }

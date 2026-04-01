@@ -3,7 +3,7 @@ import { ProdifyError } from './errors.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { detectManagedFileState, parseManagedFileHeader } from './managed-files.js';
 import { resolveRepoPath, resolveTargetPath } from './paths.js';
-import { assertSupportedInstallTarget } from './targets.js';
+import { assertSupportedInstallTarget } from '../legacy/targets.js';
 export async function installTarget(repoRoot, agent, options = {}) {
     const prodifyDir = resolveRepoPath(repoRoot, '.prodify');
     if (!(await pathExists(prodifyDir))) {

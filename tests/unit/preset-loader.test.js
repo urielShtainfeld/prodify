@@ -8,6 +8,11 @@ test('default preset loads required canonical files', async () => {
   const paths = preset.entries.map((entry) => entry.relativePath);
 
   assert.ok(paths.includes('.prodify/AGENTS.md'));
+  assert.ok(paths.includes('.prodify/artifacts/README.md'));
+  assert.ok(paths.includes('.prodify/contracts-src/README.md'));
+  assert.ok(paths.includes('.prodify/contracts-src/understand.contract.md'));
+  assert.ok(paths.includes('.prodify/contracts-src/validate.contract.md'));
+  assert.ok(paths.includes('.prodify/metrics/README.md'));
   assert.ok(paths.includes('.prodify/project.md'));
   assert.ok(paths.includes('.prodify/planning.md'));
   assert.ok(paths.includes('.prodify/runtime-commands.md'));

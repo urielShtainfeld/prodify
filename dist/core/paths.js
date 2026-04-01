@@ -6,6 +6,9 @@ export const USER_OWNED_CANONICAL_PATHS = [
     '.prodify/project.md',
     '.prodify/planning.md'
 ];
+export const USER_OWNED_CANONICAL_PREFIXES = [
+    '.prodify/contracts-src/'
+];
 export const LEGACY_TARGET_PATH_DEFINITIONS = {
     codex: {
         agent: 'codex',
@@ -34,6 +37,15 @@ export const LEGACY_TARGET_PATH_DEFINITIONS = {
 };
 export const REQUIRED_CANONICAL_PATHS = [
     '.prodify/AGENTS.md',
+    '.prodify/artifacts/README.md',
+    '.prodify/contracts-src/README.md',
+    '.prodify/contracts-src/architecture.contract.md',
+    '.prodify/contracts-src/diagnose.contract.md',
+    '.prodify/contracts-src/plan.contract.md',
+    '.prodify/contracts-src/refactor.contract.md',
+    '.prodify/contracts-src/understand.contract.md',
+    '.prodify/contracts-src/validate.contract.md',
+    '.prodify/metrics/README.md',
     '.prodify/project.md',
     '.prodify/planning.md',
     '.prodify/runtime-commands.md',

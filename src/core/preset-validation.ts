@@ -3,6 +3,15 @@ import type { PresetEntry } from '../types.js';
 
 const REQUIRED_PRESET_ENTRIES = [
   '.prodify/AGENTS.md',
+  '.prodify/artifacts/README.md',
+  '.prodify/contracts-src/README.md',
+  '.prodify/contracts-src/architecture.contract.md',
+  '.prodify/contracts-src/diagnose.contract.md',
+  '.prodify/contracts-src/plan.contract.md',
+  '.prodify/contracts-src/refactor.contract.md',
+  '.prodify/contracts-src/understand.contract.md',
+  '.prodify/contracts-src/validate.contract.md',
+  '.prodify/metrics/README.md',
   '.prodify/project.md',
   '.prodify/planning.md',
   '.prodify/runtime-commands.md',

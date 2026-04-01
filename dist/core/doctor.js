@@ -6,6 +6,7 @@ import { inspectVersionStatus } from './version-checks.js';
 import { loadDefaultPreset } from '../presets/loader.js';
 import { parseVersionMetadata } from '../presets/version.js';
 import { hasManualBootstrapGuidance } from './prompt-builder.js';
+import { inspectCompiledContracts } from '../contracts/compiler.js';
 function isProdifyDirectoryIgnore(pattern) {
     const trimmed = pattern.trim();
     return trimmed === '.prodify'
@@ -82,6 +83,25 @@ export async function runDoctor(repoRoot) {
         details: missingCanonicalFiles.length === 0
             ? 'required canonical files verified'
             : `missing canonical files: ${missingCanonicalFiles.join(', ')}`
+    });
+    const contractInventory = await inspectCompiledContracts(repoRoot);
+    checks.push({
+        label: 'contracts/source',
+        ok: contractInventory.missingSourceStages.length === 0 && contractInventory.invalidStages.length === 0,
+        details: contractInventory.missingSourceStages.length === 0
+            ? `source contracts detected: ${contractInventory.sourceCount}`
+            : `missing source contracts: ${contractInventory.missingSourceStages.join(', ')}`
+    });
+    checks.push({
+        label: 'contracts/compiled',
+        ok: contractInventory.ok,
+        details: contractInventory.ok
+            ? `compiled contracts synchronized: ${contractInventory.compiledCount}`
+            : [
+                contractInventory.missingCompiledStages.length > 0 ? `missing compiled: ${contractInventory.missingCompiledStages.join(', ')}` : '',
+                contractInventory.staleStages.length > 0 ? `stale: ${contractInventory.staleStages.join(', ')}` : '',
+                contractInventory.invalidStages.length > 0 ? `invalid: ${contractInventory.invalidStages.join(', ')}` : ''
+            ].filter(Boolean).join('; ')
     });
     const versionPath = resolveCanonicalPath(repoRoot, '.prodify/version.json');
     if (await pathExists(versionPath)) {

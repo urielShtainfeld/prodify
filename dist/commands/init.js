@@ -4,6 +4,7 @@ import { resolveRepoPath } from '../core/paths.js';
 import { pathExists } from '../core/fs.js';
 import { ProdifyError } from '../core/errors.js';
 import { loadDefaultPreset } from '../presets/loader.js';
+import { synchronizeRuntimeContracts } from '../contracts/compiler.js';
 export async function runInitCommand(args, context) {
     void args;
     const repoRoot = await resolveRepoRoot({
@@ -20,7 +21,9 @@ export async function runInitCommand(args, context) {
     for (const entry of preset.entries) {
         await writeFileEnsuringDir(resolveRepoPath(repoRoot, entry.relativePath), entry.content);
     }
+    await synchronizeRuntimeContracts(repoRoot);
     context.stdout.write(`Initialized Prodify in ${repoRoot}\n`);
     context.stdout.write('Manual bootstrap starts by telling your agent to read .prodify/AGENTS.md\n');
+    context.stdout.write('Compiled runtime contracts were generated under .prodify/contracts/\n');
     return 0;
 }

@@ -11,6 +11,7 @@ After the agent reads this file, it should continue with `$prodify-init` and kee
 ## Core Rules
 
 - `.prodify/` is the only source of truth.
+- Humans edit `.prodify/contracts-src/`; runtime reads only `.prodify/contracts/*.json`.
 - No root-level `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `.opencode/AGENTS.md` is required for the main flow.
 - External CLI commands prepare and inspect the repo.
 - Runtime commands are executed inside the chosen coding agent.
@@ -28,6 +29,10 @@ After the agent reads this file, it should continue with `$prodify-init` and kee
 - `.prodify/AGENTS.md`
 - `.prodify/project.md`
 - `.prodify/planning.md`
+- `.prodify/contracts-src/`
+- `.prodify/contracts/`
+- `.prodify/artifacts/`
+- `.prodify/metrics/`
 - `.prodify/tasks/`
 - `.prodify/state.json`
 - `.prodify/runtime-commands.md`

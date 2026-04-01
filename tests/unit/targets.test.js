@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { LEGACY_TARGET_REGISTRY, RUNTIME_PROFILES, listRuntimeProfiles } from '../../dist/core/targets.js';
+import { RUNTIME_PROFILES, listRuntimeProfiles } from '../../dist/core/targets.js';
+import { LEGACY_TARGET_REGISTRY } from '../../dist/legacy/targets.js';
 
 test('runtime profiles expose all supported agents and bootstrap prompts', () => {
   assert.deepEqual(Object.keys(RUNTIME_PROFILES).sort(), ['claude', 'codex', 'copilot', 'opencode']);

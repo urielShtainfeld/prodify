@@ -23,11 +23,12 @@ export function buildRuntimeCommandReference(options: {
     'Manual bootstrap:',
     `- First tell the agent: "${bootstrapPrompt}"`,
     '- Keep the workflow anchored to `.prodify/` files only.',
+    '- Humans edit `.prodify/contracts-src/`; runtime reads only `.prodify/contracts/*.contract.json`.',
     '',
     'Run these commands inside your coding agent after `prodify init` has created the repo scaffolding.',
     '',
-    '- `$prodify-init`: inspect `.prodify/`, select the active agent and runtime mode, initialize `.prodify/state.json`, and prepare `understand` as the first stage.',
-    '- `$prodify-execute`: run one stage of the workflow in interactive mode, then pause for validation before the next stage.',
+    '- `$prodify-init`: inspect `.prodify/`, select the active agent and runtime mode, initialize `.prodify/state.json`, and prepare the bootstrapped state.',
+    '- `$prodify-execute`: run one stage, write stage artifacts, validate them against compiled contracts, then pause in interactive mode.',
     '- `$prodify-execute --auto`: continue through the full workflow without pausing unless there is a hard failure, policy block, required approval threshold, or invalid state.',
     '- `$prodify-resume`: continue from `.prodify/state.json` after a pause, interruption, or validation checkpoint.',
     '',
@@ -56,9 +57,12 @@ export function buildRuntimeCommandReference(options: {
 }
 
 export function buildExecutionPrompt(state: ProdifyState): string {
+  const stage = state.runtime.current_stage ?? state.runtime.pending_stage ?? 'none';
+  const task = state.runtime.current_task_id ?? (state.runtime.pending_stage ? stageToTaskId(state.runtime.pending_stage) : 'none');
   return [
-    `Current stage: ${state.runtime.current_stage ?? 'none'}`,
-    `Current task: ${state.runtime.current_task_id ?? 'none'}`,
+    `Current stage: ${stage}`,
+    `Current task: ${task}`,
+    `Current state: ${state.runtime.current_state}`,
     `Mode: ${state.runtime.mode ?? 'unset'}`,
     `Status: ${state.runtime.status}`,
     `Next action: ${state.runtime.next_action}`

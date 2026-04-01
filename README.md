@@ -11,7 +11,7 @@ Fast AI-generated code drifts into inconsistent structure, weak validation, and 
 Prodify has two layers:
 
 - external CLI for repository setup and health
-- inside-agent runtime commands for actually running the transformation flow
+- inside-agent runtime commands for actually running the contract-driven transformation flow
 
 External CLI:
 
@@ -33,6 +33,10 @@ Inside the agent:
 - `.prodify/` is the only required product-owned footprint.
 - No root-level agent files are required in the default flow.
 - All durable workflow state lives in `.prodify/`.
+- Humans edit stage contracts under `.prodify/contracts-src/`.
+- Runtime execution reads only compiled contracts under `.prodify/contracts/`.
+- Stage outputs live under `.prodify/artifacts/`.
+- Local baseline/final/delta scoring lives under `.prodify/metrics/`.
 - Legacy root-file generation remains only as deprecated compatibility support.
 
 ## User Flow
@@ -58,7 +62,19 @@ node ./dist/index.js init
 5. Run `$prodify-execute` for stage-by-stage execution, or `$prodify-execute --auto` to continue until a hard stop.
 
 6. If the flow pauses for validation or is interrupted, continue with `$prodify-resume`.
-7. Use `prodify status`, `prodify doctor`, and `prodify update` from the CLI to inspect or refresh the `.prodify/` scaffolding.
+7. Use `prodify status`, `prodify doctor`, and `prodify update` from the CLI to inspect or refresh the `.prodify/` scaffolding, compiled contracts, and local metrics workspace.
+
+## Contracts And Validation
+
+- Contract source files are Markdown with YAML frontmatter under `.prodify/contracts-src/`.
+- `prodify init` and `prodify update` compile those sources into deterministic runtime JSON under `.prodify/contracts/`.
+- Stage completion is gated by compiled-contract validation, not by agent assertion alone.
+- Validation checks required artifacts, write boundaries, forbidden writes, Markdown sections, JSON keys, and contract criteria.
+
+## Local Scoring
+
+- Prodify can persist local baseline, final, and delta score artifacts under `.prodify/metrics/`.
+- Raw tool outputs and normalized scores are stored separately so the score is traceable and deterministic.
 
 ## Supported Agents
 

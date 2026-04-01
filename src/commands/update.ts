@@ -16,6 +16,7 @@ export async function runUpdateCommand(args: string[], context: CommandContext):
   }
 
   context.stdout.write(`Canonical assets: ${summary.writtenCanonicalCount} written, ${summary.preservedCanonicalCount} preserved\n`);
+  context.stdout.write(`Compiled contracts: ${summary.compiledContractCount}\n`);
   context.stdout.write('Legacy compatibility adapters: not part of the default flow\n');
 
   return 0;

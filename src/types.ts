@@ -4,6 +4,27 @@ export type FlowStage = 'understand' | 'diagnose' | 'architecture' | 'plan' | 'r
 export type RuntimeStatus = 'not_bootstrapped' | 'ready' | 'running' | 'awaiting_validation' | 'blocked' | 'failed' | 'complete';
 export type ValidationResult = 'unknown' | 'pass' | 'fail' | 'inconclusive';
 export type LegacyTargetStatus = 'supported' | 'planned' | 'experimental';
+export type ContractArtifactFormat = 'markdown' | 'json';
+export type ContractRuntimeState =
+  | 'not_bootstrapped'
+  | 'bootstrapped'
+  | 'understand_pending'
+  | 'understand_complete'
+  | 'diagnose_pending'
+  | 'diagnose_complete'
+  | 'architecture_pending'
+  | 'architecture_complete'
+  | 'plan_pending'
+  | 'plan_complete'
+  | 'refactor_pending'
+  | 'refactor_complete'
+  | 'validate_pending'
+  | 'validate_complete'
+  | 'blocked'
+  | 'failed'
+  | 'completed';
+export type ScoreSnapshotKind = 'baseline' | 'final';
+export type ScoreMetricStatus = 'pass' | 'partial' | 'fail' | 'unavailable';
 
 export interface OutputWriter {
   write(chunk: string): void;
@@ -50,17 +71,87 @@ export interface RuntimeTimestamps {
   completed_at: string | null;
 }
 
+export interface CompiledContractArtifactRule {
+  path: string;
+  format: ContractArtifactFormat;
+  required_sections: string[];
+  required_json_keys: string[];
+}
+
+export interface CompiledStageContract {
+  schema_version: string;
+  contract_version: string;
+  stage: FlowStage;
+  task_id: string;
+  source_path: string;
+  source_hash: string;
+  required_artifacts: CompiledContractArtifactRule[];
+  allowed_write_roots: string[];
+  forbidden_writes: string[];
+  policy_rules: string[];
+  success_criteria: string[];
+}
+
+export interface ContractSourceDocument {
+  frontmatter: Record<string, unknown>;
+  body: string;
+}
+
+export interface CompiledContractInventory {
+  ok: boolean;
+  sourceCount: number;
+  compiledCount: number;
+  staleStages: FlowStage[];
+  missingCompiledStages: FlowStage[];
+  missingSourceStages: FlowStage[];
+  invalidStages: string[];
+}
+
+export interface ValidationIssue {
+  rule: string;
+  message: string;
+  path?: string;
+}
+
+export interface StageValidationResult {
+  stage: FlowStage;
+  contract_version: string;
+  passed: boolean;
+  violated_rules: ValidationIssue[];
+  missing_artifacts: string[];
+  warnings: string[];
+  diagnostics: string[];
+}
+
+export interface RuntimeFailureMetadata {
+  stage: FlowStage | null;
+  contract_version: string | null;
+  reason: string;
+}
+
+export interface RuntimeBootstrapMetadata {
+  bootstrapped: boolean;
+  agent: RuntimeProfileName | null;
+  prompt: string | null;
+}
+
 export interface RuntimeStateBlock {
   status: RuntimeStatus;
+  current_state: ContractRuntimeState;
   mode: ExecutionMode | null;
   selected_agent: RuntimeProfileName | null;
   current_stage: FlowStage | null;
   current_task_id: string | null;
+  pending_stage: FlowStage | null;
   completed_stages: FlowStage[];
   awaiting_user_validation: boolean;
   last_validation_result: ValidationResult;
+  last_validation: StageValidationResult | null;
+  last_validated_contract_versions: Partial<Record<FlowStage, string>>;
   resumable: boolean;
   blocked_reason: string | null;
+  failure_metadata: RuntimeFailureMetadata | null;
+  bootstrap: RuntimeBootstrapMetadata;
   next_action: string;
   timestamps: RuntimeTimestamps;
 }
@@ -125,6 +216,8 @@ export interface StatusReport {
   initialized: boolean;
   canonicalOk: boolean;
   canonicalMissing: string[];
+  contractsOk: boolean;
+  contractInventory: CompiledContractInventory | null;
   versionStatus: VersionInspection;
   primaryAgent: RuntimeProfileName | null;
   runtimeState: ProdifyState | null;
@@ -160,4 +253,32 @@ export interface UpdateSummary {
   schemaMigrationRequired: boolean;
   writtenCanonicalCount: number;
   preservedCanonicalCount: number;
+  compiledContractCount: number;
+}
+
+export interface ScoreMetric {
+  id: string;
+  label: string;
+  tool: string;
+  weight: number;
+  max_points: number;
+  points: number;
+  status: ScoreMetricStatus;
+  details: string;
+}
+
+export interface ScoreSnapshot {
+  schema_version: string;
+  kind: ScoreSnapshotKind;
+  ecosystems: string[];
+  total_score: number;
+  max_score: number;
+  metrics: ScoreMetric[];
+}
+
+export interface ScoreDelta {
+  schema_version: string;
+  baseline_score: number;
+  final_score: number;
+  delta: number;
 }

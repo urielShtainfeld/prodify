@@ -1,13 +1,14 @@
 import { ProdifyError } from './errors.js';
 import { isRuntimeProfileName } from './paths.js';
 import { RUNTIME_STATUS } from './state.js';
+import { buildBootstrapPrompt } from './prompt-builder.js';
 import type {
   ExecutionMode,
   FlowStage,
   ProdifyState,
   ResumeDecision,
   RuntimeProfileName,
-  ValidationResult
+  StageValidationResult
 } from '../types.js';
 
 export const STAGE_ORDER: FlowStage[] = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
@@ -27,6 +28,24 @@ function cloneState(state: ProdifyState): ProdifyState {
     runtime: {
       ...state.runtime,
       completed_stages: [...state.runtime.completed_stages],
+      last_validated_contract_versions: {
+        ...state.runtime.last_validated_contract_versions
+      },
+      last_validation: state.runtime.last_validation
+        ? {
+          ...state.runtime.last_validation,
+          violated_rules: [...state.runtime.last_validation.violated_rules],
+          missing_artifacts: [...state.runtime.last_validation.missing_artifacts],
+          warnings: [...state.runtime.last_validation.warnings],
+          diagnostics: [...state.runtime.last_validation.diagnostics]
+        }
+        : null,
+      failure_metadata: state.runtime.failure_metadata
+        ? { ...state.runtime.failure_metadata }
+        : null,
+      bootstrap: {
+        ...state.runtime.bootstrap
+      },
       timestamps: {
         ...state.runtime.timestamps
       }
@@ -41,6 +60,14 @@ function nextStage(currentStage: FlowStage): FlowStage | null {
   }
 
   return STAGE_ORDER[index + 1] ?? null;
+}
+
+function pendingState(stage: FlowStage): ProdifyState['runtime']['current_state'] {
+  return `${stage}_pending` as ProdifyState['runtime']['current_state'];
+}
+
+function completeState(stage: FlowStage): ProdifyState['runtime']['current_state'] {
+  return `${stage}_complete` as ProdifyState['runtime']['current_state'];
 }
 
 function assertAgent(agent: RuntimeProfileName): void {
@@ -59,6 +86,16 @@ function assertMode(mode: ExecutionMode): void {
   }
 }
 
+function ensureStageCheckpoint(state: ProdifyState): FlowStage {
+  if (!state.runtime.current_stage) {
+    throw new ProdifyError('Cannot complete a runtime stage when no stage is active.', {
+      code: 'RUNTIME_STAGE_MISSING'
+    });
+  }
+
+  return state.runtime.current_stage;
+}
+
 export function stageToTaskId(stage: FlowStage): string {
   return STAGE_TASK_IDS[stage];
 }
@@ -73,15 +110,25 @@ export function bootstrapFlowState(
   const nextState = cloneState(state);
   nextState.primary_agent = agent;
   nextState.runtime.status = RUNTIME_STATUS.READY;
+  nextState.runtime.current_state = 'bootstrapped';
   nextState.runtime.mode = mode;
   nextState.runtime.selected_agent = agent;
-  nextState.runtime.current_stage = STAGE_ORDER[0];
-  nextState.runtime.current_task_id = stageToTaskId(STAGE_ORDER[0]);
+  nextState.runtime.current_stage = null;
+  nextState.runtime.current_task_id = null;
+  nextState.runtime.pending_stage = STAGE_ORDER[0];
   nextState.runtime.completed_stages = [];
   nextState.runtime.awaiting_user_validation = false;
   nextState.runtime.last_validation_result = 'unknown';
+  nextState.runtime.last_validation = null;
+  nextState.runtime.last_validated_contract_versions = {};
   nextState.runtime.resumable = true;
   nextState.runtime.blocked_reason = null;
+  nextState.runtime.failure_metadata = null;
+  nextState.runtime.bootstrap = {
+    bootstrapped: true,
+    agent,
+    prompt: buildBootstrapPrompt(agent)
+  };
   nextState.runtime.next_action = mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute';
   nextState.runtime.timestamps.bootstrapped_at = nextState.runtime.timestamps.bootstrapped_at ?? now;
   nextState.runtime.timestamps.last_transition_at = now;
@@ -98,9 +145,36 @@ export function startFlowExecution(
 
   const nextState = cloneState(state);
   nextState.runtime.mode = mode;
+
+  if (nextState.runtime.current_state === 'validate_complete') {
+    nextState.runtime.status = RUNTIME_STATUS.COMPLETE;
+    nextState.runtime.current_state = 'completed';
+    nextState.runtime.current_stage = null;
+    nextState.runtime.current_task_id = null;
+    nextState.runtime.pending_stage = null;
+    nextState.runtime.awaiting_user_validation = false;
+    nextState.runtime.resumable = false;
+    nextState.runtime.next_action = 'none';
+    nextState.runtime.timestamps.completed_at = now;
+    nextState.runtime.timestamps.last_transition_at = now;
+    return nextState;
+  }
+
+  const stage = nextState.runtime.pending_stage;
+  if (!stage) {
+    throw new ProdifyError('Cannot start flow execution without a pending stage.', {
+      code: 'RUNTIME_STAGE_MISSING'
+    });
+  }
+
   nextState.runtime.status = RUNTIME_STATUS.RUNNING;
+  nextState.runtime.current_state = pendingState(stage);
+  nextState.runtime.current_stage = stage;
+  nextState.runtime.current_task_id = stageToTaskId(stage);
+  nextState.runtime.pending_stage = null;
   nextState.runtime.awaiting_user_validation = false;
   nextState.runtime.blocked_reason = null;
+  nextState.runtime.failure_metadata = null;
   nextState.runtime.next_action = '$prodify-resume';
   nextState.runtime.resumable = true;
   nextState.runtime.timestamps.last_transition_at = now;
@@ -110,67 +184,111 @@ export function startFlowExecution(
 
 export function completeFlowStage(
   state: ProdifyState,
-  { validationResult = 'unknown', now = null }: { validationResult?: ValidationResult; now?: string | null } = {}
+  {
+    validation,
+    now = null
+  }: {
+    validation: StageValidationResult;
+    now?: string | null;
+  }
 ): ProdifyState {
-  if (!state.runtime.current_stage) {
-    throw new ProdifyError('Cannot complete a runtime stage when no stage is active.', {
-      code: 'RUNTIME_STAGE_MISSING'
+  const currentStage = ensureStageCheckpoint(state);
+  if (validation.stage !== currentStage) {
+    throw new ProdifyError(`Validation result stage ${validation.stage} does not match active stage ${currentStage}.`, {
+      code: 'VALIDATION_STAGE_MISMATCH'
+    });
+  }
+
+  if (!validation.passed) {
+    return failFlowStage(state, {
+      reason: validation.violated_rules.map((issue) => issue.message).join('; ') || 'stage validation failed',
+      validation,
+      now
     });
   }
 
   const nextState = cloneState(state);
-  const finishedStage = nextState.runtime.current_stage as FlowStage;
-
-  if (!nextState.runtime.completed_stages.includes(finishedStage)) {
-    nextState.runtime.completed_stages.push(finishedStage);
+  if (!nextState.runtime.completed_stages.includes(currentStage)) {
+    nextState.runtime.completed_stages.push(currentStage);
   }
 
-  const upcomingStage = nextStage(finishedStage);
-
-  if (!upcomingStage) {
-    nextState.runtime.status = RUNTIME_STATUS.COMPLETE;
-    nextState.runtime.current_stage = null;
-    nextState.runtime.current_task_id = null;
-    nextState.runtime.awaiting_user_validation = false;
-    nextState.runtime.resumable = false;
-    nextState.runtime.next_action = 'none';
-    nextState.runtime.last_validation_result = validationResult;
-    nextState.runtime.timestamps.completed_at = now;
-    nextState.runtime.timestamps.last_transition_at = now;
-    return nextState;
-  }
-
-  nextState.runtime.current_stage = upcomingStage;
-  nextState.runtime.current_task_id = stageToTaskId(upcomingStage);
+  nextState.runtime.last_validation_result = 'pass';
+  nextState.runtime.last_validation = validation;
+  nextState.runtime.last_validated_contract_versions[currentStage] = validation.contract_version;
+  nextState.runtime.blocked_reason = null;
+  nextState.runtime.failure_metadata = null;
   nextState.runtime.timestamps.last_transition_at = now;
+
+  const upcomingStage = nextStage(currentStage);
+  if (!upcomingStage) {
+    nextState.runtime.current_state = 'validate_complete';
+    nextState.runtime.current_stage = currentStage;
+    nextState.runtime.current_task_id = stageToTaskId(currentStage);
+    nextState.runtime.pending_stage = null;
+
+    if (nextState.runtime.mode === 'interactive') {
+      nextState.runtime.status = RUNTIME_STATUS.AWAITING_VALIDATION;
+      nextState.runtime.awaiting_user_validation = true;
+      nextState.runtime.resumable = true;
+      nextState.runtime.next_action = '$prodify-resume';
+      return nextState;
+    }
+
+    return startFlowExecution(nextState, {
+      mode: nextState.runtime.mode ?? 'auto',
+      now
+    });
+  }
 
   if (nextState.runtime.mode === 'interactive') {
     nextState.runtime.status = RUNTIME_STATUS.AWAITING_VALIDATION;
+    nextState.runtime.current_state = completeState(currentStage);
+    nextState.runtime.current_stage = currentStage;
+    nextState.runtime.current_task_id = stageToTaskId(currentStage);
+    nextState.runtime.pending_stage = upcomingStage;
     nextState.runtime.awaiting_user_validation = true;
+    nextState.runtime.resumable = true;
     nextState.runtime.next_action = '$prodify-resume';
-  } else {
-    nextState.runtime.status = RUNTIME_STATUS.READY;
-    nextState.runtime.awaiting_user_validation = false;
-    nextState.runtime.next_action = '$prodify-execute --auto';
+    return nextState;
   }
 
-  if (finishedStage === 'validate') {
-    nextState.runtime.last_validation_result = validationResult;
-  }
-
+  nextState.runtime.status = RUNTIME_STATUS.READY;
+  nextState.runtime.current_state = pendingState(upcomingStage);
+  nextState.runtime.current_stage = upcomingStage;
+  nextState.runtime.current_task_id = stageToTaskId(upcomingStage);
+  nextState.runtime.pending_stage = null;
+  nextState.runtime.awaiting_user_validation = false;
+  nextState.runtime.resumable = true;
+  nextState.runtime.next_action = '$prodify-execute --auto';
   return nextState;
 }
 
 export function failFlowStage(
   state: ProdifyState,
-  { reason, now = null }: { reason: string; now?: string | null }
+  {
+    reason,
+    validation = null,
+    now = null
+  }: {
+    reason: string;
+    validation?: StageValidationResult | null;
+    now?: string | null;
+  }
 ): ProdifyState {
   const nextState = cloneState(state);
   nextState.runtime.status = RUNTIME_STATUS.FAILED;
+  nextState.runtime.current_state = 'failed';
   nextState.runtime.blocked_reason = reason;
   nextState.runtime.awaiting_user_validation = false;
-  nextState.runtime.resumable = true;
-  nextState.runtime.next_action = '$prodify-resume';
+  nextState.runtime.resumable = false;
+  nextState.runtime.next_action = 'repair runtime state';
+  nextState.runtime.last_validation_result = validation ? 'fail' : nextState.runtime.last_validation_result;
+  nextState.runtime.last_validation = validation;
+  nextState.runtime.failure_metadata = {
+    stage: validation?.stage ?? nextState.runtime.current_stage,
+    contract_version: validation?.contract_version ?? null,
+    reason
+  };
   nextState.runtime.timestamps.last_transition_at = now;
   return nextState;
 }
@@ -178,11 +296,19 @@ export function failFlowStage(
 export function getResumeDecision(state: ProdifyState): ResumeDecision {
   const runtime = state.runtime;
 
-  if (runtime.status === RUNTIME_STATUS.COMPLETE) {
+  if (runtime.current_state === 'completed' || runtime.status === RUNTIME_STATUS.COMPLETE) {
     return {
       resumable: false,
       command: null,
       reason: 'flow complete'
+    };
+  }
+
+  if (runtime.current_state === 'failed' || runtime.current_state === 'blocked') {
+    return {
+      resumable: false,
+      command: null,
+      reason: runtime.blocked_reason ?? 'runtime is blocked'
     };
   }
 
@@ -194,11 +320,19 @@ export function getResumeDecision(state: ProdifyState): ResumeDecision {
     };
   }
 
+  if (runtime.status === RUNTIME_STATUS.READY) {
+    return {
+      resumable: true,
+      command: runtime.mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute',
+      reason: runtime.pending_stage
+        ? `ready for ${runtime.pending_stage}`
+        : runtime.current_state
+    };
+  }
+
   return {
     resumable: true,
-    command: runtime.status === RUNTIME_STATUS.READY
-      ? (runtime.mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute')
-      : '$prodify-resume',
-    reason: runtime.blocked_reason ?? `${runtime.status} at ${runtime.current_stage ?? 'none'}`
+    command: '$prodify-resume',
+    reason: runtime.current_state
   };
 }

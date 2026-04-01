@@ -3,7 +3,7 @@ import { ProdifyError } from './errors.js';
 import { detectManagedFileState, parseManagedFileHeader } from './managed-files.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { resolveTargetPath } from './paths.js';
-import { getLegacyTarget, listLegacyTargets } from './targets.js';
+import { getLegacyTarget, listLegacyTargets } from '../legacy/targets.js';
 export async function syncManagedTargets(repoRoot, options = {}) {
     const requestedAgent = options.agent ?? null;
     const force = options.force ?? false;

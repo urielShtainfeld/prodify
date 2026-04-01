@@ -4,7 +4,7 @@ import { ProdifyError } from './errors.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { detectManagedFileState, parseManagedFileHeader } from './managed-files.js';
 import { resolveRepoPath, resolveTargetPath } from './paths.js';
-import { assertSupportedInstallTarget } from './targets.js';
+import { assertSupportedInstallTarget } from '../legacy/targets.js';
 import type { LegacyTargetStatus, RuntimeProfileName } from '../types.js';
 
 export async function installTarget(

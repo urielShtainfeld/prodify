@@ -53,8 +53,13 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Initialized Prodify/);
   assert.match(result.stdout, /Manual bootstrap starts by telling your agent to read \.prodify\/AGENTS\.md/);
+  assert.match(result.stdout, /Compiled runtime contracts were generated under \.prodify\/contracts\//);
   await fs.access(path.join(repoRoot, '.prodify', 'state.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime-commands.md'));
+  await fs.access(path.join(repoRoot, '.prodify', 'contracts-src', 'understand.contract.md'));
+  await fs.access(path.join(repoRoot, '.prodify', 'contracts', 'understand.contract.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'artifacts', 'README.md'));
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'README.md'));
   await assertMissing(repoRoot, 'AGENTS.md');
   await assertMissing(repoRoot, 'CLAUDE.md');
   await assertMissing(repoRoot, '.github/copilot-instructions.md');
@@ -69,6 +74,7 @@ test('status becomes the primary user-facing summary after init', async () => {
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Canonical files: healthy/);
+  assert.match(result.stdout, /Contracts: 6 compiled, synchronized/);
   assert.match(result.stdout, /Version\/schema: current/);
   assert.match(result.stdout, /Primary agent runtime: none/);
   assert.match(result.stdout, /Execution state: not bootstrapped/);
@@ -85,6 +91,8 @@ test('doctor validates healthy setup after init', async () => {
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /canonical: PASS/);
+  assert.match(result.stdout, /contracts\/source: PASS/);
+  assert.match(result.stdout, /contracts\/compiled: PASS/);
   assert.match(result.stdout, /canonical\/schema: PASS/);
   assert.match(result.stdout, /runtime\/state: PASS/);
   assert.match(result.stdout, /gitignore\/prodify: PASS/);
@@ -102,6 +110,7 @@ test('update is a no-op refresh on a current repo', async () => {
   assert.match(result.stdout, /Prodify Update/);
   assert.match(result.stdout, /Version\/schema: current/);
   assert.match(result.stdout, /Canonical assets: /);
+  assert.match(result.stdout, /Compiled contracts: 6/);
   assert.match(result.stdout, /Legacy compatibility adapters: not part of the default flow/);
 });
 
@@ -135,6 +144,19 @@ test('update preserves user-owned canonical files', async () => {
   await assertMissing(repoRoot, 'AGENTS.md');
 });
 
+test('source-only contract edits are detected until compiled contracts are refreshed', async () => {
+  const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['init']);
+
+  await fs.appendFile(path.join(repoRoot, '.prodify', 'contracts-src', 'understand.contract.md'), '\nAdditional editing note.\n', 'utf8');
+
+  const result = await execCli(repoRoot, ['status']);
+
+  assert.equal(result.exitCode, 1);
+  assert.match(result.stdout, /Contracts: stale: understand/);
+  assert.match(result.stdout, /Recommended next action: prodify update/);
+});
+
 test('status reports malformed runtime state and recommends update', async () => {
   const repoRoot = await createTempRepo();
   await execCli(repoRoot, ['init']);
@@ -165,8 +187,8 @@ test('runtime bootstrap and resume readiness are reflected in status', async () 
   const initial = await readRuntimeState(repoRoot, {
     presetMetadata: {
       name: 'default',
-      version: '3.0.0',
-      schemaVersion: '3'
+      version: '4.0.0',
+      schemaVersion: '4'
     }
   });
   const bootstrapped = bootstrapFlowState(initial, {
@@ -180,7 +202,7 @@ test('runtime bootstrap and resume readiness are reflected in status', async () 
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Primary agent runtime: codex/);
-  assert.match(result.stdout, /Execution state: running at understand \(01-understand\)/);
+  assert.match(result.stdout, /Execution state: understand_pending at understand \(01-understand\)/);
   assert.match(result.stdout, /Resumable: yes/);
   assert.match(result.stdout, /Recommended next action: \$prodify-resume/);
 });
@@ -204,8 +226,10 @@ test('canonical runtime instructions live inside .prodify guidance', async () =>
   const runtimeCommands = await readRepoFile(repoRoot, '.prodify/runtime-commands.md');
 
   assert.match(guidance, /Read \.prodify\/AGENTS\.md and bootstrap Prodify/);
+  assert.match(guidance, /\.prodify\/contracts-src\//);
   assert.match(guidance, /\$prodify-init/);
   assert.match(runtimeCommands, /\$prodify-execute/);
+  assert.match(runtimeCommands, /compiled-contract validation/i);
   assert.match(runtimeCommands, /\$prodify-resume/);
 });
 

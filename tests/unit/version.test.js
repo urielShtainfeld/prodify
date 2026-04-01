@@ -6,19 +6,19 @@ import { createVersionMetadata, parseVersionMetadata, serializeVersionMetadata }
 test('version metadata serializes and parses correctly', () => {
   const presetMetadata = {
     name: 'default',
-    version: '3.0.0',
-    schemaVersion: '3'
+    version: '4.0.0',
+    schemaVersion: '4'
   };
 
   assert.deepEqual(createVersionMetadata(presetMetadata), {
-    schema_version: '3',
+    schema_version: '4',
     preset_name: 'default',
-    preset_version: '3.0.0'
+    preset_version: '4.0.0'
   });
 
   assert.deepEqual(parseVersionMetadata(serializeVersionMetadata(presetMetadata)), {
-    schemaVersion: '3',
+    schemaVersion: '4',
     presetName: 'default',
-    presetVersion: '3.0.0'
+    presetVersion: '4.0.0'
   });
 });

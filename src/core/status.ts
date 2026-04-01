@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 
 import { loadDefaultPreset } from '../presets/loader.js';
+import { inspectCompiledContracts } from '../contracts/compiler.js';
 import { pathExists } from './fs.js';
 import { getResumeDecision } from './flow-state.js';
 import { resolveCanonicalPath, resolveRepoPath, REQUIRED_CANONICAL_PATHS } from './paths.js';
@@ -22,6 +23,29 @@ function describeCanonicalHealth(missingPaths: string[]): string {
   }
 
   return `missing ${missingPaths.join(', ')}`;
+}
+
+function describeContracts(report: StatusReport): string {
+  if (!report.contractInventory) {
+    return 'unavailable';
+  }
+
+  if (report.contractInventory.ok) {
+    return `${report.contractInventory.compiledCount} compiled, synchronized`;
+  }
+
+  const parts = [];
+  if (report.contractInventory.missingCompiledStages.length > 0) {
+    parts.push(`missing compiled: ${report.contractInventory.missingCompiledStages.join(', ')}`);
+  }
+  if (report.contractInventory.staleStages.length > 0) {
+    parts.push(`stale: ${report.contractInventory.staleStages.join(', ')}`);
+  }
+  if (report.contractInventory.invalidStages.length > 0) {
+    parts.push(`invalid: ${report.contractInventory.invalidStages.join(', ')}`);
+  }
+
+  return parts.join('; ') || 'invalid';
 }
 
 function describeVersion(versionStatus: VersionInspection, presetMetadata: VersionMetadata): string {
@@ -49,9 +73,9 @@ function describeRuntime(runtime: RuntimeStateBlock | null): string {
     return 'not bootstrapped';
   }
 
-  const stage = runtime.current_stage ?? 'none';
-  const task = runtime.current_task_id ?? 'none';
-  return `${runtime.status} at ${stage} (${task})`;
+  const stage = runtime.current_stage ?? runtime.pending_stage ?? 'none';
+  const task = runtime.current_task_id ?? (runtime.pending_stage ? `${runtime.pending_stage} pending` : 'none');
+  return `${runtime.current_state} at ${stage} (${task})`;
 }
 
 async function checkManualBootstrapGuidance(repoRoot: string): Promise<boolean> {
@@ -67,6 +91,7 @@ async function checkManualBootstrapGuidance(repoRoot: string): Promise<boolean> 
 function deriveNextAction({
   initialized,
   canonicalOk,
+  contractsOk,
   versionStatus,
   runtimeState,
   runtimeStateError,
@@ -74,6 +99,7 @@ function deriveNextAction({
 }: {
   initialized: boolean;
   canonicalOk: boolean;
+  contractsOk: boolean;
   versionStatus: VersionInspection;
   runtimeState: StatusReport['runtimeState'];
   runtimeStateError: Error | null;
@@ -83,7 +109,7 @@ function deriveNextAction({
     return 'prodify init';
   }
 
-  if (!canonicalOk || ['missing', 'malformed', 'outdated'].includes(versionStatus.status)) {
+  if (!canonicalOk || !contractsOk || ['missing', 'malformed', 'outdated'].includes(versionStatus.status)) {
     return 'prodify update';
   }
 
@@ -119,6 +145,8 @@ export async function inspectRepositoryStatus(
       initialized: false,
       canonicalOk: false,
       canonicalMissing: [...REQUIRED_CANONICAL_PATHS],
+      contractsOk: false,
+      contractInventory: null,
       versionStatus: {
         status: 'missing',
         current: null,
@@ -144,6 +172,7 @@ export async function inspectRepositoryStatus(
     }
   }
 
+  const contractInventory = await inspectCompiledContracts(repoRoot);
   const versionStatus = await inspectVersionStatus(repoRoot, preset.metadata);
   let runtimeState = null;
   let runtimeStateError = null;
@@ -165,10 +194,17 @@ export async function inspectRepositoryStatus(
   const canonicalOk = missingPaths.length === 0;
 
   return {
-    ok: initialized && canonicalOk && versionStatus.status === 'current' && !runtimeStateError && manualBootstrapReady,
+    ok: initialized
+      && canonicalOk
+      && contractInventory.ok
+      && versionStatus.status === 'current'
+      && !runtimeStateError
+      && manualBootstrapReady,
     initialized,
     canonicalOk,
     canonicalMissing: missingPaths,
+    contractsOk: contractInventory.ok,
+    contractInventory,
     versionStatus,
     primaryAgent: runtimeState?.primary_agent ?? null,
     runtimeState,
@@ -180,6 +216,7 @@ export async function inspectRepositoryStatus(
     recommendedNextAction: deriveNextAction({
       initialized,
       canonicalOk,
+      contractsOk: contractInventory.ok,
       versionStatus,
       runtimeState,
       runtimeStateError,
@@ -194,6 +231,7 @@ export function renderStatusReport(report: StatusReport): string {
     'Prodify Status',
     `Repository: ${report.initialized ? 'initialized' : 'not initialized'}`,
     `Canonical files: ${describeCanonicalHealth(report.canonicalMissing)}`,
+    `Contracts: ${describeContracts(report)}`,
     `Version/schema: ${describeVersion(report.versionStatus, report.presetMetadata)}`,
     `Primary agent runtime: ${report.primaryAgent ?? 'none'}`,
     `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
@@ -205,7 +243,7 @@ export function renderStatusReport(report: StatusReport): string {
   ];
 
   if (report.runtimeStateError) {
-    lines.splice(5, 0, `Runtime state: ${report.runtimeStateError.message}`);
+    lines.splice(6, 0, `Runtime state: ${report.runtimeStateError.message}`);
   }
 
   return lines.join('\n');

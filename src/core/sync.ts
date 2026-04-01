@@ -4,7 +4,7 @@ import { ProdifyError } from './errors.js';
 import { detectManagedFileState, parseManagedFileHeader } from './managed-files.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { resolveTargetPath } from './paths.js';
-import { getLegacyTarget, listLegacyTargets } from './targets.js';
+import { getLegacyTarget, listLegacyTargets } from '../legacy/targets.js';
 import type { LegacySyncResult } from '../types.js';
 
 export async function syncManagedTargets(

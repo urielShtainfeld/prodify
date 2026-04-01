@@ -23,7 +23,9 @@ export function renderHelp() {
         '  prodify init',
         '  prodify status',
         '  prodify doctor',
-        '  prodify update'
+        '  prodify update',
+        '',
+        'The primary flow is .prodify-first and contract-driven.'
     ].join('\n');
 }
 function isLegacyCommand(commandName) {

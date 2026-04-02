@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "contract_version": "1.0.0",
+  "stage": "refactor",
+  "task_id": "05-refactor",
+  "source_path": ".prodify/contracts-src/refactor.contract.md",
+  "source_hash": "0445b0239d888c292430f8fe5ddba557813f0e19a6bafdb9c7a7ad7d10c627b1",
+  "required_artifacts": [
+    {
+      "path": ".prodify/artifacts/05-refactor.md",
+      "format": "markdown",
+      "required_sections": [
+        "Behavior Guardrails",
+        "Changed Files",
+        "Policy Checks",
+        "Selected Step",
+        "Success Criteria"
+      ],
+      "required_json_keys": []
+    }
+  ],
+  "allowed_write_roots": [
+    ".prodify/artifacts/",
+    "assets/",
+    "README.md",
+    "src/",
+    "tests/"
+  ],
+  "forbidden_writes": [
+    ".prodify/contracts/"
+  ],
+  "policy_rules": [
+    "Execute exactly one selected step.",
+    "Keep the diff minimal and behavior-preserving unless the plan says otherwise."
+  ],
+  "success_criteria": [
+    "The selected plan step is implemented fully.",
+    "Unrelated files remain untouched."
+  ]
+}

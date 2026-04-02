@@ -4,16 +4,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { runCli } from '../../dist/cli.js';
-import { bootstrapFlowState, startFlowExecution } from '../../dist/core/flow-state.js';
+import { bootstrapFlowState, failFlowStage, startFlowExecution } from '../../dist/core/flow-state.js';
 import { readRuntimeState, writeRuntimeState } from '../../dist/core/state.js';
 import { createTempRepo, memoryStream } from '../unit/helpers.js';
-
-const TARGET_PATHS = {
-  codex: 'AGENTS.md',
-  claude: 'CLAUDE.md',
-  copilot: '.github/copilot-instructions.md',
-  opencode: '.opencode/AGENTS.md'
-};
 
 async function execCli(repoRoot, args) {
   const stdout = memoryStream();
@@ -73,11 +66,13 @@ test('status becomes the primary user-facing summary after init', async () => {
   const result = await execCli(repoRoot, ['status']);
 
   assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Workspace health: healthy/);
   assert.match(result.stdout, /Canonical files: healthy/);
-  assert.match(result.stdout, /Contracts: 6 compiled, synchronized/);
+  assert.match(result.stdout, /Contract freshness: 6 compiled, synchronized/);
   assert.match(result.stdout, /Version\/schema: current/);
   assert.match(result.stdout, /Primary agent runtime: none/);
   assert.match(result.stdout, /Execution state: not bootstrapped/);
+  assert.match(result.stdout, /Stage validation: not run yet/);
   assert.match(result.stdout, /Manual bootstrap: ready/);
   assert.match(result.stdout, /Bootstrap prompt: Read \.prodify\/AGENTS\.md/);
   assert.match(result.stdout, /Recommended next action: tell your agent:/);
@@ -127,6 +122,9 @@ test('update repairs outdated version metadata and restores .prodify runtime ass
   assert.match(result.stdout, /Version\/schema: outdated/);
   await fs.access(path.join(repoRoot, '.prodify', 'runtime-commands.md'));
   await assertMissing(repoRoot, 'AGENTS.md');
+  await assertMissing(repoRoot, 'CLAUDE.md');
+  await assertMissing(repoRoot, '.github/copilot-instructions.md');
+  await assertMissing(repoRoot, '.opencode/AGENTS.md');
 });
 
 test('update preserves user-owned canonical files', async () => {
@@ -153,7 +151,7 @@ test('source-only contract edits are detected until compiled contracts are refre
   const result = await execCli(repoRoot, ['status']);
 
   assert.equal(result.exitCode, 1);
-  assert.match(result.stdout, /Contracts: stale: understand/);
+  assert.match(result.stdout, /Contract freshness: stale: understand/);
   assert.match(result.stdout, /Recommended next action: prodify update/);
 });
 
@@ -201,10 +199,41 @@ test('runtime bootstrap and resume readiness are reflected in status', async () 
   const result = await execCli(repoRoot, ['status']);
 
   assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Workspace health: healthy/);
   assert.match(result.stdout, /Primary agent runtime: codex/);
   assert.match(result.stdout, /Execution state: understand_pending at understand \(01-understand\)/);
+  assert.match(result.stdout, /Stage validation: not run yet/);
   assert.match(result.stdout, /Resumable: yes/);
   assert.match(result.stdout, /Recommended next action: \$prodify-resume/);
+});
+
+test('status distinguishes stage-validation failure from workspace health issues', async () => {
+  const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['init']);
+
+  const initial = await readRuntimeState(repoRoot, {
+    presetMetadata: {
+      name: 'default',
+      version: '4.0.0',
+      schemaVersion: '4'
+    }
+  });
+  const bootstrapped = bootstrapFlowState(initial, {
+    agent: 'codex',
+    mode: 'interactive'
+  });
+  const running = startFlowExecution(bootstrapped);
+  const failed = failFlowStage(running, {
+    reason: 'Required artifact .prodify/artifacts/01-understand.md is missing.'
+  });
+  await writeRuntimeState(repoRoot, failed);
+
+  const result = await execCli(repoRoot, ['status']);
+
+  assert.equal(result.exitCode, 1);
+  assert.match(result.stdout, /Workspace health: healthy/);
+  assert.match(result.stdout, /Stage validation: failed at understand:/);
+  assert.match(result.stdout, /Recommended next action: rerun or remediate stage outputs/);
 });
 
 test('status can render a deterministic bootstrap prompt for a requested profile', async () => {
@@ -233,16 +262,23 @@ test('canonical runtime instructions live inside .prodify guidance', async () =>
   assert.match(runtimeCommands, /\$prodify-resume/);
 });
 
-test('legacy install remains explicit compatibility support', async () => {
+test('no command path can create root-level legacy adapter files', async () => {
   const repoRoot = await createTempRepo();
   await execCli(repoRoot, ['init']);
+  await execCli(repoRoot, ['update']);
 
+  await assertMissing(repoRoot, 'AGENTS.md');
+  await assertMissing(repoRoot, 'CLAUDE.md');
+  await assertMissing(repoRoot, '.github/copilot-instructions.md');
+  await assertMissing(repoRoot, '.opencode/AGENTS.md');
+});
+
+test('removed legacy commands are not available anymore', async () => {
+  const repoRoot = await createTempRepo();
   const result = await execCli(repoRoot, ['install', '--agent', 'codex']);
 
-  assert.equal(result.exitCode, 0);
-  assert.match(result.stderr, /Deprecated command: prodify install/);
-  assert.match(result.stdout, /legacy compatibility install codex/);
-  assert.match(await readRepoFile(repoRoot, 'AGENTS.md'), /Generated by Prodify\./);
+  assert.equal(result.exitCode, 1);
+  assert.match(result.stderr, /Unknown command: install/);
 });
 
 test('README and help output match the lifecycle model', async () => {

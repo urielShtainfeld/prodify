@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "contract_version": "1.0.0",
+  "stage": "plan",
+  "task_id": "04-plan",
+  "source_path": ".prodify/contracts-src/plan.contract.md",
+  "source_hash": "69d7175649ed28daef3cd83059944c26e99821802016124b451f3dc0ead2bfca",
+  "required_artifacts": [
+    {
+      "path": ".prodify/artifacts/04-plan.md",
+      "format": "markdown",
+      "required_sections": [
+        "Policy Checks",
+        "Risks",
+        "Step Breakdown",
+        "Success Criteria",
+        "Verification"
+      ],
+      "required_json_keys": []
+    }
+  ],
+  "allowed_write_roots": [
+    ".prodify/artifacts/"
+  ],
+  "forbidden_writes": [
+    "src/",
+    "tests/"
+  ],
+  "policy_rules": [
+    "Keep the plan deterministic and minimal.",
+    "Map every step back to a diagnosed issue or architecture rule."
+  ],
+  "success_criteria": [
+    "The plan enumerates executable steps.",
+    "Verification is defined before refactoring starts."
+  ]
+}

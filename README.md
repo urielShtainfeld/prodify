@@ -37,7 +37,7 @@ Inside the agent:
 - Runtime execution reads only compiled contracts under `.prodify/contracts/`.
 - Stage outputs live under `.prodify/artifacts/`.
 - Local baseline/final/delta scoring lives under `.prodify/metrics/`.
-- Legacy root-file generation remains only as deprecated compatibility support.
+- This repository’s checked-in repo-root `.prodify/` directory is the real self-hosting workspace for Prodify itself and should match the generated runtime layout plus repo-specific artifacts.
 
 ## User Flow
 
@@ -78,12 +78,12 @@ node ./dist/index.js init
 
 ## Supported Agents
 
-- Codex → `AGENTS.md`
-- Claude → `CLAUDE.md`
-- Copilot → `.github/copilot-instructions.md`
-- OpenCode → `.opencode/AGENTS.md`
+- Codex
+- Claude
+- Copilot
+- OpenCode
 
-These legacy adapter paths remain available only for explicit compatibility flows. They are not required for the main product path.
+All supported agents use the same `.prodify/AGENTS.md` bootstrap path in the current product model.
 
 ## Development
 

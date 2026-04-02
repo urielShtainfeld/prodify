@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "contract_version": "1.0.0",
+  "stage": "architecture",
+  "task_id": "03-architecture",
+  "source_path": ".prodify/contracts-src/architecture.contract.md",
+  "source_hash": "4069286860c23df3a2cb441a115ffa001544e318e7410f645a8cfebb5b5b30a4",
+  "required_artifacts": [
+    {
+      "path": ".prodify/artifacts/03-architecture.md",
+      "format": "markdown",
+      "required_sections": [
+        "Dependency Rules",
+        "Policy Checks",
+        "Proposed Structure",
+        "Success Criteria",
+        "Tradeoffs"
+      ],
+      "required_json_keys": []
+    }
+  ],
+  "allowed_write_roots": [
+    ".prodify/artifacts/"
+  ],
+  "forbidden_writes": [
+    "src/",
+    "tests/"
+  ],
+  "policy_rules": [
+    "Flag mixed concerns explicitly.",
+    "Keep Domain dependencies pointing inward only."
+  ],
+  "success_criteria": [
+    "Architecture violations are listed clearly.",
+    "The target structure is explicit."
+  ]
+}

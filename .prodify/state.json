@@ -1,0 +1,34 @@
+{
+  "schema_version": "2",
+  "preset_name": "default",
+  "preset_version": "4.0.0",
+  "primary_agent": null,
+  "runtime": {
+    "status": "not_bootstrapped",
+    "current_state": "not_bootstrapped",
+    "mode": null,
+    "selected_agent": null,
+    "current_stage": null,
+    "current_task_id": null,
+    "pending_stage": null,
+    "completed_stages": [],
+    "awaiting_user_validation": false,
+    "last_validation_result": "unknown",
+    "last_validation": null,
+    "last_validated_contract_versions": {},
+    "resumable": false,
+    "blocked_reason": null,
+    "failure_metadata": null,
+    "bootstrap": {
+      "bootstrapped": false,
+      "agent": null,
+      "prompt": null
+    },
+    "next_action": "$prodify-init",
+    "timestamps": {
+      "bootstrapped_at": null,
+      "last_transition_at": null,
+      "completed_at": null
+    }
+  }
+}

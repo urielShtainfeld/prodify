@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { resolveRepoRoot } from '../../dist/core/repo-root.js';
-import { resolveCanonicalPath, resolveTargetPath } from '../../dist/core/paths.js';
+import { resolveCanonicalPath } from '../../dist/core/paths.js';
 import { createTempRepo } from './helpers.js';
 
 test('repo root resolves from .prodify presence', async () => {
@@ -32,14 +32,12 @@ test('repo root resolves from .git during bootstrap', async () => {
   assert.equal(resolved, repoRoot);
 });
 
-test('legacy compatibility target paths still resolve deterministically', () => {
+test('canonical paths still resolve deterministically', () => {
   const repoRoot = '/tmp/example-repo';
 
   assert.equal(resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md'), '/tmp/example-repo/.prodify/AGENTS.md');
-  assert.equal(resolveTargetPath(repoRoot, 'codex'), '/tmp/example-repo/AGENTS.md');
-  assert.equal(resolveTargetPath(repoRoot, 'claude'), '/tmp/example-repo/CLAUDE.md');
-  assert.equal(resolveTargetPath(repoRoot, 'copilot'), '/tmp/example-repo/.github/copilot-instructions.md');
-  assert.equal(resolveTargetPath(repoRoot, 'opencode'), '/tmp/example-repo/.opencode/AGENTS.md');
+  assert.equal(resolveCanonicalPath(repoRoot, '.prodify/contracts-src/understand.contract.md'), '/tmp/example-repo/.prodify/contracts-src/understand.contract.md');
+  assert.equal(resolveCanonicalPath(repoRoot, '.prodify/contracts/understand.contract.json'), '/tmp/example-repo/.prodify/contracts/understand.contract.json');
 });
 
 test('repo root resolution fails cleanly when root is missing', async () => {

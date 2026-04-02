@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 
 import { loadDefaultPreset } from '../presets/loader.js';
-import { inspectCompiledContracts } from '../contracts/compiler.js';
+import { inspectCompiledContracts } from '../contracts/freshness.js';
 import { pathExists } from './fs.js';
 import { getResumeDecision } from './flow-state.js';
 import { resolveCanonicalPath, resolveRepoPath, REQUIRED_CANONICAL_PATHS } from './paths.js';
@@ -25,7 +25,34 @@ function describeCanonicalHealth(missingPaths: string[]): string {
   return `missing ${missingPaths.join(', ')}`;
 }
 
-function describeContracts(report: StatusReport): string {
+function hasStageValidationFailure(report: StatusReport): boolean {
+  return report.runtimeState?.runtime.current_state === 'failed'
+    || report.runtimeState?.runtime.last_validation_result === 'fail';
+}
+
+function describeWorkspaceHealth(report: StatusReport): string {
+  if (!report.initialized) {
+    return 'not initialized';
+  }
+
+  const issues = [];
+  if (!report.canonicalOk) {
+    issues.push(`canonical files: ${describeCanonicalHealth(report.canonicalMissing)}`);
+  }
+  if (report.versionStatus.status !== 'current') {
+    issues.push(`version/schema: ${report.versionStatus.status}`);
+  }
+  if (report.runtimeStateError) {
+    issues.push('runtime state unreadable');
+  }
+  if (!report.manualBootstrapReady) {
+    issues.push('bootstrap guidance incomplete');
+  }
+
+  return issues.length === 0 ? 'healthy' : `repair required (${issues.join('; ')})`;
+}
+
+function describeContractFreshness(report: StatusReport): string {
   if (!report.contractInventory) {
     return 'unavailable';
   }
@@ -78,6 +105,27 @@ function describeRuntime(runtime: RuntimeStateBlock | null): string {
   return `${runtime.current_state} at ${stage} (${task})`;
 }
 
+function describeStageValidation(report: StatusReport): string {
+  const runtime = report.runtimeState?.runtime ?? null;
+  if (!runtime) {
+    return 'unavailable';
+  }
+
+  if (runtime.current_state === 'failed' || runtime.last_validation_result === 'fail') {
+    const stage = runtime.failure_metadata?.stage ?? runtime.current_stage ?? null;
+    const reason = runtime.failure_metadata?.reason ?? runtime.blocked_reason ?? 'stage outputs failed contract validation';
+    return `failed${stage ? ` at ${stage}` : ''}: ${reason}`;
+  }
+
+  if (!runtime.last_validation) {
+    return 'not run yet';
+  }
+
+  return runtime.last_validation.passed
+    ? `last pass at ${runtime.last_validation.stage} (contract ${runtime.last_validation.contract_version})`
+    : `failed at ${runtime.last_validation.stage}`;
+}
+
 async function checkManualBootstrapGuidance(repoRoot: string): Promise<boolean> {
   const agentsPath = resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md');
   if (!(await pathExists(agentsPath))) {
@@ -119,6 +167,10 @@ function deriveNextAction({
 
   if (!runtimeState || runtimeState.runtime.status === RUNTIME_STATUS.NOT_BOOTSTRAPPED) {
     return `tell your agent: "${bootstrapPrompt}"`;
+  }
+
+  if (runtimeState.runtime.current_state === 'failed' || runtimeState.runtime.last_validation_result === 'fail') {
+    return 'rerun or remediate stage outputs';
   }
 
   const resume = getResumeDecision(runtimeState);
@@ -192,6 +244,8 @@ export async function inspectRepositoryStatus(
     reason: runtimeStateError?.message ?? 'runtime unavailable'
   };
   const canonicalOk = missingPaths.length === 0;
+  const stageValidationFailed = runtimeState?.runtime.current_state === 'failed'
+    || runtimeState?.runtime.last_validation_result === 'fail';
 
   return {
     ok: initialized
@@ -199,7 +253,8 @@ export async function inspectRepositoryStatus(
       && contractInventory.ok
       && versionStatus.status === 'current'
       && !runtimeStateError
-      && manualBootstrapReady,
+      && manualBootstrapReady
+      && !stageValidationFailed,
     initialized,
     canonicalOk,
     canonicalMissing: missingPaths,
@@ -230,11 +285,13 @@ export function renderStatusReport(report: StatusReport): string {
   const lines = [
     'Prodify Status',
     `Repository: ${report.initialized ? 'initialized' : 'not initialized'}`,
+    `Workspace health: ${describeWorkspaceHealth(report)}`,
     `Canonical files: ${describeCanonicalHealth(report.canonicalMissing)}`,
-    `Contracts: ${describeContracts(report)}`,
+    `Contract freshness: ${describeContractFreshness(report)}`,
     `Version/schema: ${describeVersion(report.versionStatus, report.presetMetadata)}`,
     `Primary agent runtime: ${report.primaryAgent ?? 'none'}`,
     `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
+    `Stage validation: ${describeStageValidation(report)}`,
     `Manual bootstrap: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/AGENTS.md guidance'}`,
     `Bootstrap profile: ${report.bootstrapProfile}`,
     `Bootstrap prompt: ${report.bootstrapPrompt}`,
@@ -243,7 +300,7 @@ export function renderStatusReport(report: StatusReport): string {
   ];
 
   if (report.runtimeStateError) {
-    lines.splice(6, 0, `Runtime state: ${report.runtimeStateError.message}`);
+    lines.splice(7, 0, `Runtime state: ${report.runtimeStateError.message}`);
   }
 
   return lines.join('\n');

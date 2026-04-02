@@ -4,8 +4,8 @@ import { listFilesRecursive, pathExists, writeFileEnsuringDir } from '../core/fs
 import { normalizeRepoRelativePath, resolveCanonicalPath } from '../core/paths.js';
 import { ProdifyError } from '../core/errors.js';
 import { parseContractSource } from './parser.js';
-import { buildCompiledContract, validateCompiledContractShape } from './schema.js';
-const STAGES = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
+import { validateCompiledContractShape } from './compiled-schema.js';
+import { CONTRACT_STAGE_NAMES, normalizeSourceContractDocument } from './source-schema.js';
 function createSourceHash(source) {
     return crypto.createHash('sha256').update(source).digest('hex');
 }
@@ -15,7 +15,7 @@ export function serializeCompiledContract(contract) {
 export function compileContractSource(options) {
     const { markdown, sourcePath } = options;
     const document = parseContractSource(markdown);
-    return buildCompiledContract({
+    return normalizeSourceContractDocument({
         document,
         sourcePath,
         sourceHash: createSourceHash(markdown.replace(/\r\n/g, '\n'))
@@ -65,7 +65,7 @@ export async function synchronizeRuntimeContracts(repoRoot) {
             continue;
         }
         const stage = file.relativePath.replace(/\.contract\.json$/, '');
-        if (!STAGES.includes(stage)) {
+        if (!CONTRACT_STAGE_NAMES.includes(stage)) {
             await fs.rm(file.fullPath, { force: true });
         }
     }
@@ -80,54 +80,4 @@ export async function loadCompiledContract(repoRoot, stage) {
     }
     const parsed = JSON.parse(await fs.readFile(contractPath, 'utf8'));
     return validateCompiledContractShape(parsed);
-}
-export async function inspectCompiledContracts(repoRoot) {
-    const inventory = {
-        ok: true,
-        sourceCount: 0,
-        compiledCount: 0,
-        staleStages: [],
-        missingCompiledStages: [],
-        missingSourceStages: [],
-        invalidStages: []
-    };
-    let expectedContracts = [];
-    try {
-        expectedContracts = await compileContractsFromSourceDir(repoRoot);
-        inventory.sourceCount = expectedContracts.length;
-    }
-    catch (error) {
-        inventory.ok = false;
-        inventory.invalidStages.push(error instanceof Error ? error.message : String(error));
-    }
-    const expectedByStage = new Map();
-    for (const contract of expectedContracts) {
-        expectedByStage.set(contract.stage, contract);
-    }
-    for (const stage of STAGES) {
-        const expected = expectedByStage.get(stage);
-        if (!expected) {
-            inventory.ok = false;
-            inventory.missingSourceStages.push(stage);
-            continue;
-        }
-        try {
-            const compiled = await loadCompiledContract(repoRoot, stage);
-            inventory.compiledCount += 1;
-            if (serializeCompiledContract(compiled) !== serializeCompiledContract(expected)) {
-                inventory.ok = false;
-                inventory.staleStages.push(stage);
-            }
-        }
-        catch (error) {
-            inventory.ok = false;
-            inventory.missingCompiledStages.push(stage);
-            inventory.invalidStages.push(error instanceof Error ? error.message : String(error));
-        }
-    }
-    inventory.staleStages.sort((left, right) => left.localeCompare(right));
-    inventory.missingCompiledStages.sort((left, right) => left.localeCompare(right));
-    inventory.missingSourceStages.sort((left, right) => left.localeCompare(right));
-    inventory.invalidStages.sort((left, right) => left.localeCompare(right));
-    return inventory;
 }

@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "contract_version": "1.0.0",
+  "stage": "understand",
+  "task_id": "01-understand",
+  "source_path": ".prodify/contracts-src/understand.contract.md",
+  "source_hash": "850c024b5d54208e101c16797c84ab43a35bfa8ba46c0fcd8f37ab6783f024cb",
+  "required_artifacts": [
+    {
+      "path": ".prodify/artifacts/01-understand.md",
+      "format": "markdown",
+      "required_sections": [
+        "Current State",
+        "Open Questions",
+        "Policy Checks",
+        "Repository Summary",
+        "Success Criteria"
+      ],
+      "required_json_keys": []
+    }
+  ],
+  "allowed_write_roots": [
+    ".prodify/artifacts/"
+  ],
+  "forbidden_writes": [
+    "src/",
+    "tests/"
+  ],
+  "policy_rules": [
+    "Operate only on verified data.",
+    "Preserve the existing behavior during understanding."
+  ],
+  "success_criteria": [
+    "Known unknowns are listed explicitly.",
+    "The repository intent is captured clearly."
+  ]
+}

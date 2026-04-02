@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "contract_version": "1.0.0",
+  "stage": "diagnose",
+  "task_id": "02-diagnose",
+  "source_path": ".prodify/contracts-src/diagnose.contract.md",
+  "source_hash": "73a614c393ff1fa7829128f7b05881121efd1a18ec3ad697cfcc73039664a19c",
+  "required_artifacts": [
+    {
+      "path": ".prodify/artifacts/02-diagnose.md",
+      "format": "markdown",
+      "required_sections": [
+        "Constraints",
+        "Observed Issues",
+        "Policy Checks",
+        "Root Causes",
+        "Success Criteria"
+      ],
+      "required_json_keys": []
+    }
+  ],
+  "allowed_write_roots": [
+    ".prodify/artifacts/"
+  ],
+  "forbidden_writes": [
+    "src/",
+    "tests/"
+  ],
+  "policy_rules": [
+    "Diagnose from repository evidence only.",
+    "Do not propose implementation changes in the diagnosis stage."
+  ],
+  "success_criteria": [
+    "Every critical issue is tied to evidence.",
+    "Root causes are separated from symptoms."
+  ]
+}

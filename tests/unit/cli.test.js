@@ -18,9 +18,9 @@ test('cli help includes all command names', async () => {
   assert.doesNotMatch(stdout.toString(), /\bsync\b/);
 });
 
-test('command registry keeps legacy shims but exposes the lifecycle commands publicly', () => {
+test('command registry exposes only the lifecycle commands publicly', () => {
   assert.deepEqual(PUBLIC_COMMANDS, ['init', 'status', 'doctor', 'update']);
-  assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'install', 'status', 'sync', 'update']);
+  assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'status', 'update']);
   assert.match(renderHelp(), /prodify status/);
   assert.match(renderHelp(), /prodify update/);
 });

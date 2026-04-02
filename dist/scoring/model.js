@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { inspectCompiledContracts } from '../contracts/compiler.js';
+import { inspectCompiledContracts } from '../contracts/freshness.js';
 import { ProdifyError } from '../core/errors.js';
 import { listFilesRecursive, pathExists, writeFileEnsuringDir } from '../core/fs.js';
 import { resolveRepoPath } from '../core/paths.js';

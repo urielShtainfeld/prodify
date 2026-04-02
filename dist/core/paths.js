@@ -1,6 +1,5 @@
 import path from 'node:path';
 export const RUNTIME_PROFILE_NAMES = ['codex', 'claude', 'copilot', 'opencode'];
-export const KNOWN_TARGETS = [...RUNTIME_PROFILE_NAMES];
 export const USER_OWNED_CANONICAL_PATHS = [
     '.prodify/AGENTS.md',
     '.prodify/project.md',
@@ -9,32 +8,6 @@ export const USER_OWNED_CANONICAL_PATHS = [
 export const USER_OWNED_CANONICAL_PREFIXES = [
     '.prodify/contracts-src/'
 ];
-export const LEGACY_TARGET_PATH_DEFINITIONS = {
-    codex: {
-        agent: 'codex',
-        status: 'supported',
-        canonicalSources: ['.prodify/AGENTS.md'],
-        targetPath: 'AGENTS.md'
-    },
-    claude: {
-        agent: 'claude',
-        status: 'planned',
-        canonicalSources: ['.prodify/AGENTS.md'],
-        targetPath: 'CLAUDE.md'
-    },
-    copilot: {
-        agent: 'copilot',
-        status: 'planned',
-        canonicalSources: ['.prodify/AGENTS.md', '.prodify/project.md'],
-        targetPath: '.github/copilot-instructions.md'
-    },
-    opencode: {
-        agent: 'opencode',
-        status: 'experimental',
-        canonicalSources: ['.prodify/AGENTS.md'],
-        targetPath: '.opencode/AGENTS.md'
-    }
-};
 export const REQUIRED_CANONICAL_PATHS = [
     '.prodify/AGENTS.md',
     '.prodify/artifacts/README.md',
@@ -64,19 +37,6 @@ export function normalizeRepoRelativePath(relativePath) {
 }
 export function resolveRepoPath(repoRoot, relativePath) {
     return path.join(repoRoot, ...normalizeRepoRelativePath(relativePath).split('/'));
-}
-export function getTargetDefinition(agent) {
-    if (!isRuntimeProfileName(agent)) {
-        return null;
-    }
-    return LEGACY_TARGET_PATH_DEFINITIONS[agent] ?? null;
-}
-export function resolveTargetPath(repoRoot, agent) {
-    const target = getTargetDefinition(agent);
-    if (!target) {
-        return null;
-    }
-    return resolveRepoPath(repoRoot, target.targetPath);
 }
 export function resolveCanonicalPath(repoRoot, relativePath) {
     return resolveRepoPath(repoRoot, relativePath);

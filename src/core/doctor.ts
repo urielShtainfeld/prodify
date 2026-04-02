@@ -7,7 +7,7 @@ import { inspectVersionStatus } from './version-checks.js';
 import { loadDefaultPreset } from '../presets/loader.js';
 import { parseVersionMetadata } from '../presets/version.js';
 import { hasManualBootstrapGuidance } from './prompt-builder.js';
-import { inspectCompiledContracts } from '../contracts/compiler.js';
+import { inspectCompiledContracts } from '../contracts/freshness.js';
 import type { DoctorCheck, DoctorResult } from '../types.js';
 
 function isProdifyDirectoryIgnore(pattern: string): boolean {

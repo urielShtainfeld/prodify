@@ -1,8 +1,6 @@
 import { runDoctorCommand } from './commands/doctor.js';
 import { runInitCommand } from './commands/init.js';
-import { runInstallCommand } from './commands/install.js';
 import { runStatusCommand } from './commands/status.js';
-import { runSyncCommand } from './commands/sync.js';
 import { runUpdateCommand } from './commands/update.js';
 import { ProdifyError, toErrorMessage } from './core/errors.js';
 import type { CommandContext, CommandHandler } from './types.js';
@@ -11,13 +9,10 @@ export const COMMANDS: Record<string, CommandHandler> = {
   init: runInitCommand,
   status: runStatusCommand,
   doctor: runDoctorCommand,
-  update: runUpdateCommand,
-  install: runInstallCommand,
-  sync: runSyncCommand
+  update: runUpdateCommand
 };
 
 export const PUBLIC_COMMANDS = ['init', 'status', 'doctor', 'update'] as const;
-export const LEGACY_COMMANDS = ['install', 'sync'] as const;
 
 export function renderHelp(): string {
   return [
@@ -31,10 +26,6 @@ export function renderHelp(): string {
     '',
     'The primary flow is .prodify-first and contract-driven.'
   ].join('\n');
-}
-
-function isLegacyCommand(commandName: string): boolean {
-  return (LEGACY_COMMANDS as readonly string[]).includes(commandName);
 }
 
 export async function runCli(argv: string[], context: Partial<CommandContext> = {}): Promise<number> {
@@ -57,10 +48,6 @@ export async function runCli(argv: string[], context: Partial<CommandContext> = 
   }
 
   try {
-    if (isLegacyCommand(commandName)) {
-      stderr.write(`Deprecated command: prodify ${commandName}. Use the .prodify-only flow: init, status, doctor, update.\n`);
-    }
-
     return await command(rest, { cwd, stdout, stderr });
   } catch (error) {
     const message = toErrorMessage(error);

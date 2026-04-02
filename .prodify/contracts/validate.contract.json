@@ -1,0 +1,47 @@
+{
+  "schema_version": "1",
+  "contract_version": "1.0.0",
+  "stage": "validate",
+  "task_id": "06-validate",
+  "source_path": ".prodify/contracts-src/validate.contract.md",
+  "source_hash": "10c9f32b2bbed054884a3c9c5ad5f195954ca0c702f14a783835d79a07aca2ed",
+  "required_artifacts": [
+    {
+      "path": ".prodify/artifacts/06-validate.md",
+      "format": "markdown",
+      "required_sections": [
+        "Policy Checks",
+        "Regressions",
+        "Success Criteria",
+        "Validation Results"
+      ],
+      "required_json_keys": []
+    },
+    {
+      "path": ".prodify/state.json",
+      "format": "json",
+      "required_sections": [],
+      "required_json_keys": [
+        "preset_name",
+        "preset_version",
+        "runtime",
+        "schema_version"
+      ]
+    }
+  ],
+  "allowed_write_roots": [
+    ".prodify/artifacts/",
+    ".prodify/metrics/"
+  ],
+  "forbidden_writes": [
+    "src/"
+  ],
+  "policy_rules": [
+    "Critical regressions block forward progress.",
+    "Validation must follow every refactor step."
+  ],
+  "success_criteria": [
+    "The result is strong enough to gate the next runtime transition.",
+    "Validation records whether regressions were found."
+  ]
+}

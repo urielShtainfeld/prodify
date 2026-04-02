@@ -3,7 +3,6 @@ export type ExecutionMode = 'interactive' | 'auto';
 export type FlowStage = 'understand' | 'diagnose' | 'architecture' | 'plan' | 'refactor' | 'validate';
 export type RuntimeStatus = 'not_bootstrapped' | 'ready' | 'running' | 'awaiting_validation' | 'blocked' | 'failed' | 'complete';
 export type ValidationResult = 'unknown' | 'pass' | 'fail' | 'inconclusive';
-export type LegacyTargetStatus = 'supported' | 'planned' | 'experimental';
 export type ContractArtifactFormat = 'markdown' | 'json';
 export type ContractRuntimeState =
   | 'not_bootstrapped'
@@ -180,30 +179,6 @@ export interface RuntimeProfile {
   nuances: string[];
 }
 
-export interface LegacyTargetDefinition {
-  agent: RuntimeProfileName;
-  status: LegacyTargetStatus;
-  canonicalSources: readonly string[];
-  targetPath: string;
-  enabled: boolean;
-  doctorEligible: boolean;
-  generator: (repoRoot: string) => Promise<string>;
-}
-
-export interface ManagedFileHeader {
-  targetAgent: RuntimeProfileName;
-  canonicalSources: string[];
-  regenerateWith: string;
-  bodyFingerprint: string | null;
-  manualEditsWarning: boolean;
-  headerLength: number;
-}
-
-export interface ManagedFileState {
-  state: 'unmanaged' | 'unchanged' | 'conflict' | 'outdated';
-  header: ManagedFileHeader | null;
-}
-
 export interface VersionInspection {
   status: 'missing' | 'current' | 'outdated' | 'malformed';
   current: ParsedVersionMetadata | null;
@@ -240,12 +215,6 @@ export interface DoctorCheck {
 export interface DoctorResult {
   ok: boolean;
   checks: DoctorCheck[];
-}
-
-export interface LegacySyncResult {
-  agent: RuntimeProfileName;
-  targetPath: string;
-  status: 'updated' | 'unchanged' | 'blocked' | 'skipped-unmanaged' | 'not-enabled';
 }
 
 export interface UpdateSummary {

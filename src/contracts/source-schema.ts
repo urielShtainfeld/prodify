@@ -8,7 +8,7 @@ import type {
   FlowStage
 } from '../types.js';
 
-const STAGES: readonly FlowStage[] = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
+export const CONTRACT_STAGE_NAMES: readonly FlowStage[] = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
 
 function asString(value: unknown, fieldName: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -32,11 +32,7 @@ function asStringArray(value: unknown, fieldName: string): string[] {
 }
 
 function asOptionalStringArray(value: unknown, fieldName: string): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  if (value.length === 0) {
+  if (!Array.isArray(value) || value.length === 0) {
     return [];
   }
 
@@ -45,7 +41,7 @@ function asOptionalStringArray(value: unknown, fieldName: string): string[] {
 
 function asStage(value: unknown): FlowStage {
   const stage = asString(value, 'stage') as FlowStage;
-  if (!STAGES.includes(stage)) {
+  if (!CONTRACT_STAGE_NAMES.includes(stage)) {
     throw new ProdifyError(`Contract frontmatter field "stage" is invalid: ${stage}.`, {
       code: 'CONTRACT_SCHEMA_INVALID'
     });
@@ -93,7 +89,7 @@ function normalizeArtifactRule(rawValue: unknown): CompiledContractArtifactRule 
   };
 }
 
-export function buildCompiledContract(options: {
+export function normalizeSourceContractDocument(options: {
   document: ContractSourceDocument;
   sourcePath: string;
   sourceHash: string;
@@ -140,32 +136,4 @@ export function buildCompiledContract(options: {
     policy_rules: asStringArray(document.frontmatter.policy_rules, 'policy_rules'),
     success_criteria: asStringArray(document.frontmatter.success_criteria, 'success_criteria')
   };
-}
-
-export function validateCompiledContractShape(contract: unknown): CompiledStageContract {
-  if (typeof contract !== 'object' || contract === null || Array.isArray(contract)) {
-    throw new ProdifyError('Compiled contract must be a JSON object.', {
-      code: 'COMPILED_CONTRACT_INVALID'
-    });
-  }
-
-  const record = contract as Record<string, unknown>;
-  return buildCompiledContract({
-    document: {
-      frontmatter: {
-        schema_version: record.schema_version,
-        contract_version: record.contract_version,
-        stage: record.stage,
-        task_id: record.task_id,
-        required_artifacts: record.required_artifacts,
-        allowed_write_roots: record.allowed_write_roots,
-        forbidden_writes: record.forbidden_writes,
-        policy_rules: record.policy_rules,
-        success_criteria: record.success_criteria
-      },
-      body: 'compiled-contract'
-    },
-    sourcePath: asString(record.source_path, 'source_path'),
-    sourceHash: asString(record.source_hash, 'source_hash')
-  });
 }

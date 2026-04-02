@@ -2,7 +2,7 @@
 task_id: 01-understand
 reads: []
 writes:
-  - .prodify/artifacts/orientation_map.md
+  - .prodify/artifacts/01-understand.md
 next_task: 02-diagnose
 mode: analysis
 ---
@@ -68,12 +68,12 @@ Survey the repository structure conservatively and produce an evidence-based ori
    - MUST NOT modify source code.
 
 ## Output Specification
-Use `.prodify/templates/orientation_map.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+Use `.prodify/templates/01-understand.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Failure Conditions
 - MUST STOP if the repository root cannot be read.
 - MUST STOP if required repository evidence cannot be inspected safely.
-- MUST STOP if the output cannot be produced in `.prodify/templates/orientation_map.template.md`.
+- MUST STOP if the output cannot be produced in `.prodify/templates/01-understand.template.md`.
 - MUST NOT modify source code.
 
 ## Definition of Done

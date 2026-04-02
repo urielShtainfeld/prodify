@@ -32,12 +32,13 @@ Inside the agent:
 
 - `.prodify/` is the only required product-owned footprint.
 - No root-level agent files are required in the default flow.
+- If this repository contains a root `AGENTS.md`, treat it as repository-local contributor guidance for developing Prodify itself, not as a generated or required product runtime file.
 - All durable workflow state lives in `.prodify/`.
 - Humans edit stage contracts under `.prodify/contracts-src/`.
 - Runtime execution reads only compiled contracts under `.prodify/contracts/`.
 - Stage outputs live under `.prodify/artifacts/`.
 - Local baseline/final/delta scoring lives under `.prodify/metrics/`.
-- This repository’s checked-in repo-root `.prodify/` directory is the real self-hosting workspace for Prodify itself and should match the generated runtime layout plus repo-specific artifacts.
+- This repository’s checked-in repo-root `.prodify/` directory is the self-hosting workspace for Prodify itself. It includes the generated runtime layout plus repo-specific design and development artifacts, so it is not a byte-for-byte snapshot of fresh `prodify init` output.
 
 ## User Flow
 
@@ -98,6 +99,8 @@ The implementation lives primarily in:
 - `assets/presets/default/`
 - `tests/`
 - `docs/`
+
+Repository-local contributor guidance for this self-hosted repo lives in root [AGENTS.md](/Users/urielsh/projects/prodify/AGENTS.md). Product runtime guidance lives in [.prodify/AGENTS.md](/Users/urielsh/projects/prodify/.prodify/AGENTS.md).
 
 ## License
 

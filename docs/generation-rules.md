@@ -1,7 +1,12 @@
 # Compatibility File Generation Rules
 
 ## Goal
-Define how canonical `.prodify/` sources become agent-specific compatibility files.
+Describe a possible future compatibility-file generation pipeline without treating it as active default behavior.
+
+## Current Product Behavior
+- The supported lifecycle bootstraps agents directly from `.prodify/AGENTS.md`.
+- `prodify init` and `prodify update` do not generate compatibility files.
+- The rules below are design notes for future or opt-in compatibility surfaces only.
 
 ## General Generation Pipeline
 1. Resolve repository root.
@@ -14,7 +19,8 @@ Define how canonical `.prodify/` sources become agent-specific compatibility fil
 ## Target Rules
 
 ### Codex
-- Status: `supported`
+- Agent support status: `supported`
+- Compatibility-file status: not enabled in the default flow
 - Canonical sources:
   - `.prodify/AGENTS.md`
 - Output path:
@@ -25,10 +31,11 @@ Define how canonical `.prodify/` sources become agent-specific compatibility fil
   - prepend standard generated header
   - preserve markdown body exactly after the header
 - Unsupported feature handling:
-  - none in v1
+  - do not imply this mode is active until a dedicated opt-in command exists
 
 ### Claude
-- Status: `planned`
+- Agent support status: bootstrap path supported
+- Compatibility-file status: planned
 - Canonical sources:
   - `.prodify/AGENTS.md`
 - Output path:
@@ -42,7 +49,8 @@ Define how canonical `.prodify/` sources become agent-specific compatibility fil
   - emit a clear “planned target” note if generation is not yet enabled in the CLI
 
 ### Copilot
-- Status: `planned`
+- Agent support status: bootstrap path supported
+- Compatibility-file status: planned
 - Canonical sources:
   - `.prodify/AGENTS.md`
   - `.prodify/project.md`
@@ -58,7 +66,8 @@ Define how canonical `.prodify/` sources become agent-specific compatibility fil
   - if required concise transformation rules are unavailable, stop instead of generating a lossy or ambiguous file
 
 ### OpenCode
-- Status: `experimental`
+- Agent support status: bootstrap path supported
+- Compatibility-file status: experimental
 - Canonical sources:
   - `.prodify/AGENTS.md`
 - Output path:
@@ -78,8 +87,8 @@ Define how canonical `.prodify/` sources become agent-specific compatibility fil
 - Generation must be deterministic for identical inputs.
 
 ## Codex Reference Mapping
-Codex is the reference implementation for v1 because it has:
+If compatibility-file generation is reintroduced, Codex remains the simplest reference mapping because it has:
 - one canonical source file
 - one explicit output path
 - no required semantic transformation beyond the generated header
-- an already-proven repository-root instruction file pattern
+- a historically familiar repository-root instruction file pattern

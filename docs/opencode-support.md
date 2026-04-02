@@ -1,14 +1,16 @@
 # OpenCode Support
 
 ## Goal
-Define the compatibility target for OpenCode.
+Define the current OpenCode bootstrap path and the experimental compatibility-file surface.
 
-## Compatibility Mapping
+## Current Supported Behavior
+- Bootstrap path: `.prodify/AGENTS.md`
+- Root or `.opencode/` compatibility file: not part of the default lifecycle
+
+## Experimental Compatibility Surface
 - Status: `experimental`
 - Canonical source: `.prodify/AGENTS.md`
-- Expected generated target: `.opencode/AGENTS.md`
-
-## Generation Behavior
+- Future target path if enabled: `.opencode/AGENTS.md`
 - Default design: direct copy with generated header.
 - Read `.prodify/AGENTS.md`.
 - Prepend the standard generated-file header for target `opencode`.
@@ -22,4 +24,4 @@ Define the compatibility target for OpenCode.
 ## Placeholder Strategy
 - Document the target and generation rule now.
 - Keep CLI support opt-in and clearly labeled experimental.
-- Prefer “not yet validated” over claiming full support before the integration is confirmed.
+- Prefer “not yet validated” over claiming current default support for compatibility-file generation.

@@ -1,3 +1,160 @@
 {
-  "executions": []
+  "executions": [
+    {
+      "timestamp": "2026-04-02T18:45:05Z",
+      "task": "01-understand",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/01-understand.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Verified repository structure, preset assets, docs, and tests relevant to Task 65.",
+        "Wrote the understand-stage artifact and advanced run state to 02-diagnose."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:45:51Z",
+      "task": "02-diagnose",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/02-diagnose.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Recorded evidence-backed consistency drift across tasks, docs, preset assets, and checked-in artifacts.",
+        "Advanced run state to 03-architecture."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:46:35Z",
+      "task": "03-architecture",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/03-architecture.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Defined the target truth boundaries for contracts, tasks, preset assets, docs, and contributor-only root files.",
+        "Advanced run state to 04-plan."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:47:33Z",
+      "task": "04-plan",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/04-plan.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Planned three atomic consistency steps for Task 65.",
+        "Selected step-01-clarify-default-lifecycle-docs as the first refactor step."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:50:35Z",
+      "task": "05-refactor",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/05-refactor.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Clarified the default `.prodify`-first lifecycle across root and canonical guidance files.",
+        "Validation is now required for step-01-clarify-default-lifecycle-docs."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:51:31Z",
+      "task": "06-validate",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/06-validate.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Validation passed for step-01-clarify-default-lifecycle-docs with npm test.",
+        "Advanced to step-02-reframe-compatibility-docs."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:54:14Z",
+      "task": "05-refactor",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/05-refactor.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Reframed compatibility-target documentation as future or non-default behavior.",
+        "Validation is now required for step-02-reframe-compatibility-docs."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:55:06Z",
+      "task": "06-validate",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/06-validate.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Validation passed for step-02-reframe-compatibility-docs with npm test.",
+        "Advanced to step-03-strengthen-consistency-tests."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:57:22Z",
+      "task": "05-refactor",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/05-refactor.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Added explicit consistency assertions for the `.prodify`-first lifecycle and self-hosted workspace boundaries.",
+        "Validation is now required for step-03-strengthen-consistency-tests."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:58:17Z",
+      "task": "06-validate",
+      "result": "failed",
+      "artifacts_touched": [
+        ".prodify/artifacts/06-validate.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Validation failed for step-03-strengthen-consistency-tests during npm test.",
+        "Repair the same selected step before continuing."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:59:29Z",
+      "task": "05-refactor",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/05-refactor.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Repaired step-03-strengthen-consistency-tests by aligning the regex with the documented repository-local wording.",
+        "Validation was retried for the same selected step."
+      ]
+    },
+    {
+      "timestamp": "2026-04-02T18:59:29Z",
+      "task": "06-validate",
+      "result": "success",
+      "artifacts_touched": [
+        ".prodify/artifacts/06-validate.md",
+        ".prodify/artifacts/run_state.json"
+      ],
+      "notes": [
+        "Validation passed for step-03-strengthen-consistency-tests with npm test after the repair.",
+        "All planned Task 65 steps are now complete."
+      ]
+    }
+  ]
 }

@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Repository note: this root file exists for contributors working on the Prodify source repository. It is not created or required by Prodify's default product lifecycle. The product runtime entrypoint remains `.prodify/AGENTS.md`.
+
 ## 1. Purpose
 
 This system defines a **deterministic execution protocol** for evolving a codebase to production-grade quality.
@@ -17,6 +19,7 @@ Execution is **state-driven** and **artifact-driven**.
 * Outputs: `.prodify/artifacts/*.md`
 * Tasks: `.prodify/tasks/*.md`
 * Templates: `.prodify/templates/*.md`
+* Active stage artifacts use the numbered runtime filenames `01-understand.md` through `06-validate.md`
 
 No implicit state is allowed.
 
@@ -109,7 +112,7 @@ For every task:
 
 ### 6.1 Scope
 
-* EXACTLY ONE step from `refactor_plan.md`
+* EXACTLY ONE step from `04-plan.md`
 * NO additional changes allowed
 
 ### 6.2 Violations

@@ -284,12 +284,17 @@ test('removed legacy commands are not available anymore', async () => {
 test('README and help output match the lifecycle model', async () => {
   const repoRoot = await createTempRepo();
   const readme = await fs.readFile(path.join(process.cwd(), 'README.md'), 'utf8');
+  const compatibilityTargets = await fs.readFile(path.join(process.cwd(), 'docs', 'compatibility-targets.md'), 'utf8');
+  const codexSupport = await fs.readFile(path.join(process.cwd(), 'docs', 'codex-support.md'), 'utf8');
   const help = await execCli(repoRoot, ['--help']);
 
   assert.match(readme, /prodify status/);
   assert.match(readme, /read `\.prodify\/AGENTS\.md`/i);
   assert.match(readme, /No root-level agent files are required/i);
+  assert.match(readme, /root `AGENTS\.md`.*repository-local contributor guidance/i);
   assert.doesNotMatch(readme, /prodify install --agent/);
+  assert.match(compatibilityTargets, /do not create root-level compatibility files/i);
+  assert.match(codexSupport, /not part of the default lifecycle/i);
   assert.match(help.stdout, /prodify status/);
   assert.match(help.stdout, /prodify update/);
   assert.doesNotMatch(help.stdout, /prodify install/);

@@ -1,9 +1,9 @@
 ---
 task_id: 02-diagnose
 reads:
-  - .prodify/artifacts/orientation_map.md
+  - .prodify/artifacts/01-understand.md
 writes:
-  - .prodify/artifacts/diagnostic_report.md
+  - .prodify/artifacts/02-diagnose.md
 next_task: 03-architecture
 mode: analysis
 ---
@@ -16,7 +16,7 @@ Detect technical debt, architectural erosion, and reliability risks.
 Review the repository areas mapped in Task 01 and produce a concrete diagnostic snapshot without modifying source code.
 
 ## Inputs
-- `.prodify/artifacts/orientation_map.md`
+- `.prodify/artifacts/01-understand.md`
 - read access to the mapped modules and entrypoints
 
 ## Execution Instructions
@@ -52,12 +52,12 @@ Review the repository areas mapped in Task 01 and produce a concrete diagnostic 
    - MUST NOT modify source code.
 
 ## Output Specification
-Use `.prodify/templates/diagnostic_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+Use `.prodify/templates/02-diagnose.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Failure Conditions
-- MUST STOP if `.prodify/artifacts/orientation_map.md` is missing.
+- MUST STOP if `.prodify/artifacts/01-understand.md` is missing.
 - MUST STOP if the mapped repository areas cannot be inspected.
-- MUST STOP if the output cannot be produced in `.prodify/templates/diagnostic_report.template.md`.
+- MUST STOP if the output cannot be produced in `.prodify/templates/02-diagnose.template.md`.
 - MUST NOT modify source code.
 
 ## Definition of Done

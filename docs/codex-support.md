@@ -1,32 +1,24 @@
 # Codex Support
 
 ## Goal
-Define the first fully supported Prodify compatibility target: Codex.
+Define the current Codex bootstrap path and keep any future compatibility-file mapping clearly out of the default lifecycle.
 
-## Compatibility Mapping
+## Current Supported Behavior
 - Status: `supported`
-- Canonical source: `.prodify/AGENTS.md`
-- Generated target: `AGENTS.md`
+- Bootstrap entrypoint: `.prodify/AGENTS.md`
+- Root `AGENTS.md` generation: not part of the default lifecycle
 
-## Generation Behavior
-- Read `.prodify/AGENTS.md`.
-- Prepend the standard generated-file header for target `codex`.
-- Write the result to repository-root `AGENTS.md`.
-- Preserve the canonical markdown body exactly after the header.
+## Current Rules
+- Tell Codex to read `.prodify/AGENTS.md`.
+- Keep runtime state and workflow assets under `.prodify/`.
+- Do not treat repository-root `AGENTS.md` as a product-managed output in the current flow.
 
-## Generated Header Requirements
-The generated `AGENTS.md` must include:
-- generated-by notice
-- target agent `codex`
-- canonical source `.prodify/AGENTS.md`
-- regenerate command `prodify sync --agent codex`
+## Future Compatibility Surface
+- Historical or future compatibility mode could target repository-root `AGENTS.md`.
+- If that mode returns, it must be explicit and opt-in rather than part of `prodify init` or `prodify update`.
+- This repository's existing root `AGENTS.md` is contributor-local guidance for developing Prodify itself.
 
-## Sync Behavior
-- If root `AGENTS.md` is managed by Prodify, `prodify sync` may update it.
-- If root `AGENTS.md` exists but is unmanaged, Prodify must stop by default.
-- `prodify doctor` must validate that root `AGENTS.md` matches the expected generated content.
-
-## Why Codex Is The Reference Target
-- The repo already uses a root `AGENTS.md` pattern.
-- The mapping is simple and deterministic.
-- It establishes the generated-file contract before more transformed targets are added.
+## Why This Distinction Matters
+- Codex is supported today through the canonical `.prodify/AGENTS.md` bootstrap path.
+- Presenting root `AGENTS.md` generation as current behavior would contradict the tested `.prodify`-first lifecycle.
+- Any future compatibility-file design must remain subordinate to the canonical `.prodify` model.

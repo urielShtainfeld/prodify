@@ -1,11 +1,11 @@
 ---
 task_id: 06-validate
 reads:
-  - .prodify/artifacts/architecture_spec.md
-  - .prodify/artifacts/refactor_plan.md
-  - .prodify/artifacts/implementation_summary.md
+  - .prodify/artifacts/03-architecture.md
+  - .prodify/artifacts/04-plan.md
+  - .prodify/artifacts/05-refactor.md
 writes:
-  - .prodify/artifacts/validation_report.md
+  - .prodify/artifacts/06-validate.md
 next_task: 05-refactor
 mode: validation
 ---
@@ -18,9 +18,9 @@ Rigorously audit the refactored code against the declared architecture and plan.
 Validate the most recently executed refactor step using the current source files and the required runtime artifacts, without modifying source code.
 
 ## Inputs
-- `.prodify/artifacts/architecture_spec.md`
-- `.prodify/artifacts/refactor_plan.md`
-- `.prodify/artifacts/implementation_summary.md`
+- `.prodify/artifacts/03-architecture.md`
+- `.prodify/artifacts/04-plan.md`
+- `.prodify/artifacts/05-refactor.md`
 - current source files affected by the selected step
 
 ## Execution Instructions
@@ -51,15 +51,15 @@ Validate the most recently executed refactor step using the current source files
    - MUST NOT modify source code.
 
 ## Output Specification
-Use `.prodify/templates/validation_report.template.md` and fill every section explicitly. Do not substitute a freeform structure.
+Use `.prodify/templates/06-validate.template.md` and fill every section explicitly. Do not substitute a freeform structure.
 
 ## Failure Conditions
-- MUST STOP if `.prodify/artifacts/architecture_spec.md` is missing.
-- MUST STOP if `.prodify/artifacts/refactor_plan.md` is missing.
-- MUST STOP if `.prodify/artifacts/implementation_summary.md` is missing.
+- MUST STOP if `.prodify/artifacts/03-architecture.md` is missing.
+- MUST STOP if `.prodify/artifacts/04-plan.md` is missing.
+- MUST STOP if `.prodify/artifacts/05-refactor.md` is missing.
 - MUST STOP if Task 05 context for the selected step is missing or ambiguous.
 - MUST STOP if a PASS or FAIL verdict cannot be supported by evidence.
-- MUST STOP if the output cannot be produced in `.prodify/templates/validation_report.template.md`.
+- MUST STOP if the output cannot be produced in `.prodify/templates/06-validate.template.md`.
 - MUST NOT modify source code.
 
 ## Definition of Done

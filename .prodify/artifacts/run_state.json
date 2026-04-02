@@ -1,9 +1,14 @@
 {
-  "current_task": "01-understand",
-  "last_completed_task": null,
-  "next_task": "01-understand",
+  "current_task": null,
+  "last_completed_task": "06-validate",
+  "next_task": null,
   "selected_refactor_step": null,
-  "status": "ready",
+  "completed_step_ids": [
+    "step-01-clarify-default-lifecycle-docs",
+    "step-02-reframe-compatibility-docs",
+    "step-03-strengthen-consistency-tests"
+  ],
+  "status": "complete",
   "artifacts_dir": ".prodify/artifacts",
   "notes": []
 }

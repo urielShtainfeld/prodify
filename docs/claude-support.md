@@ -1,29 +1,22 @@
 # Claude Support
 
 ## Goal
-Define the compatibility target for Claude.
+Define the current Claude bootstrap path and the still-planned compatibility-file surface.
 
-## Compatibility Mapping
+## Current Supported Behavior
+- Bootstrap path: `.prodify/AGENTS.md`
+- Root compatibility file: not part of the default lifecycle
+
+## Planned Compatibility Surface
 - Status: `planned`
 - Canonical source: `.prodify/AGENTS.md`
-- Generated target: `CLAUDE.md`
-
-## Generation Behavior
-- Read `.prodify/AGENTS.md`.
-- Prepend the standard generated-file header for target `claude`.
-- Write the result to repository-root `CLAUDE.md`.
-- In v1, preserve the canonical markdown body after the header.
+- Future target path if enabled: `CLAUDE.md`
 
 ## Direct Copy vs Transformation
-- v1 behavior: direct copy with generated header.
+- Planned behavior: direct copy with generated header.
 - Future option: minor title normalization if Claude-specific naming proves useful.
 - No semantic reduction should occur unless a later design explicitly defines it.
 
-## Sync Behavior
-- Planned target behavior should mirror Codex once implemented:
-  - managed file can be regenerated
-  - unmanaged file blocks generation by default
-  - drift should be detected by `prodify doctor`
-
 ## Limitation
-- Claude support is documented here, but may remain unavailable in the CLI until implemented.
+- The bootstrap path is already `.prodify`-first.
+- The compatibility file remains design-only until explicitly implemented.

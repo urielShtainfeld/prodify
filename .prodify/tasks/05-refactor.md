@@ -1,9 +1,9 @@
 ---
 task_id: 05-refactor
 reads:
-  - .prodify/artifacts/refactor_plan.md
+  - .prodify/artifacts/04-plan.md
 writes:
-  - .prodify/artifacts/implementation_summary.md
+  - .prodify/artifacts/05-refactor.md
 next_task: 06-validate
 mode: execution
 ---
@@ -13,10 +13,10 @@ mode: execution
 Surgically implement exactly one atomic refactoring step.
 
 ## Scope
-Execute one selected step from `refactor_plan.md`, update only the necessary source files for that step, and summarize the exact implementation result.
+Execute one selected step from `04-plan.md`, update only the necessary source files for that step, and summarize the exact implementation result.
 
 ## Inputs
-- `.prodify/artifacts/refactor_plan.md`
+- `.prodify/artifacts/04-plan.md`
 - one selected step from the fixed step structure
 - the target source files named by that selected step
 
@@ -45,13 +45,13 @@ Execute one selected step from `refactor_plan.md`, update only the necessary sou
    - MUST STOP if the selected step is ambiguous, missing, malformed, or combines unrelated concerns.
 
 ## Output Specification
-Use `.prodify/templates/implementation_summary.template.md` and fill every section explicitly for `implementation_summary.md`. Do not substitute a freeform structure for the summary artifact.
+Use `.prodify/templates/05-refactor.template.md` and fill every section explicitly. Do not substitute a freeform structure for the summary artifact.
 
 ## Failure Conditions
-- MUST STOP if `.prodify/artifacts/refactor_plan.md` is missing.
+- MUST STOP if `.prodify/artifacts/04-plan.md` is missing.
 - MUST STOP if no single selected step can be resolved safely from the plan.
 - MUST STOP if execution would require widening scope to unrelated files.
-- MUST STOP if the output cannot be produced in `.prodify/templates/implementation_summary.template.md`.
+- MUST STOP if the output cannot be produced in `.prodify/templates/05-refactor.template.md`.
 - MUST NOT modify unrelated files.
 
 ## Definition of Done

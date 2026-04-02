@@ -21,4 +21,9 @@ test('default preset loads required canonical files', async () => {
   assert.ok(paths.includes('.prodify/tasks/README.md'));
   assert.ok(paths.includes('.prodify/rules/README.md'));
   assert.ok(paths.includes('.prodify/templates/README.md'));
+  assert.equal(paths.includes('AGENTS.md'), false);
+  assert.equal(paths.includes('CLAUDE.md'), false);
+  assert.equal(paths.some((entry) => entry.startsWith('.github/')), false);
+  assert.equal(paths.some((entry) => entry.startsWith('.opencode/')), false);
+  assert.equal(paths.some((entry) => entry.startsWith('.prodify/presets/')), false);
 });

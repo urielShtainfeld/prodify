@@ -1,6 +1,7 @@
 import { normalizeRepoRelativePath } from '../core/paths.js';
 import { ProdifyError } from '../core/errors.js';
 import { stageToTaskId } from '../core/flow-state.js';
+import { normalizeStageSkillRouting } from '../skills/schema.js';
 import type {
   CompiledContractArtifactRule,
   CompiledStageContract,
@@ -134,6 +135,7 @@ export function normalizeSourceContractDocument(options: {
       ? asStringArray(document.frontmatter.forbidden_writes, 'forbidden_writes').map((entry) => normalizeRepoRelativePath(entry))
       : [],
     policy_rules: asStringArray(document.frontmatter.policy_rules, 'policy_rules'),
-    success_criteria: asStringArray(document.frontmatter.success_criteria, 'success_criteria')
+    success_criteria: asStringArray(document.frontmatter.success_criteria, 'success_criteria'),
+    skill_routing: normalizeStageSkillRouting(document.frontmatter.skill_routing)
   };
 }

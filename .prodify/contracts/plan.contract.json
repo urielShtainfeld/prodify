@@ -33,5 +33,10 @@
   "success_criteria": [
     "The plan enumerates executable steps.",
     "Verification is defined before refactoring starts."
-  ]
+  ],
+  "skill_routing": {
+    "default_skills": [],
+    "allowed_skills": [],
+    "conditional_skills": []
+  }
 }

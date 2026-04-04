@@ -1,19 +1,20 @@
 # Runtime Commands
 
 Run these commands inside your coding agent after `prodify init`.
+If this machine has not been prepared for that agent yet, run `prodify setup-agent <agent>` outside the repo first.
 
 ## Manual Bootstrap
 
 - First tell the agent: `Read .prodify/AGENTS.md and bootstrap Prodify for this repository.`
-- Keep the run anchored to `.prodify/AGENTS.md`, `.prodify/project.md`, `.prodify/planning.md`, `.prodify/contracts-src/`, `.prodify/contracts/`, `.prodify/artifacts/`, `.prodify/metrics/`, `.prodify/tasks/`, and `.prodify/state.json`.
+- Keep the run anchored to `.prodify/AGENTS.md`, `.prodify/project.md`, `.prodify/planning.md`, `.prodify/contracts-src/`, `.prodify/contracts/`, `.prodify/skills/`, `.prodify/artifacts/`, `.prodify/metrics/`, `.prodify/tasks/`, and `.prodify/state.json`.
 
 ## Commands
 
 - `$prodify-init`
   - inspect `.prodify/`
-  - select the active agent/runtime mode
+  - detect or resolve the active agent/runtime mode
   - initialize `.prodify/state.json`
-  - prepare the bootstrapped state and the `understand` contract
+  - prepare the bootstrapped state and the `understand` contract without locking the repo to one agent
 
 - `$prodify-execute`
   - run one workflow stage
@@ -51,4 +52,6 @@ Run these commands inside your coding agent after `prodify init`.
 
 - Source contracts live under `.prodify/contracts-src/*.contract.md`.
 - Runtime execution reads only `.prodify/contracts/*.contract.json`.
+- Skill definitions live under `.prodify/skills/*.json`.
+- Stage skill routing can activate bounded skills per stage, but contracts and validators remain authoritative.
 - Stage completion is gated by compiled-contract validation, not by agent assertion alone.

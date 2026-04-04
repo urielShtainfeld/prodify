@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "id": "planning-method",
+  "name": "Planning Method",
+  "version": "1.0.0",
+  "category": "stage-method",
+  "description": "Shapes implementation plans into bounded, testable, behavior-preserving steps.",
+  "intended_use": [
+    "Use during plan to convert diagnosis and architecture outputs into ordered steps."
+  ],
+  "stage_compatibility": [
+    "plan"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Keep steps small, testable, and directly linked to diagnosed issues.",
+    "Call out guardrails when behavior must remain stable."
+  ],
+  "caution_guidance": [
+    "Do not introduce implementation detail that belongs in refactor."
+  ]
+}

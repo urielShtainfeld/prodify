@@ -31,12 +31,14 @@ test('runtime bootstrap initializes the bootstrapped checkpoint deterministicall
     now: '2026-03-31T00:00:00.000Z'
   });
 
-  assert.equal(bootstrapped.primary_agent, 'codex');
   assert.equal(bootstrapped.runtime.status, 'ready');
   assert.equal(bootstrapped.runtime.current_state, 'bootstrapped');
   assert.equal(bootstrapped.runtime.pending_stage, 'understand');
   assert.equal(bootstrapped.runtime.current_stage, null);
   assert.equal(bootstrapped.runtime.next_action, '$prodify-execute');
+  assert.deepEqual(bootstrapped.runtime.bootstrap, {
+    bootstrapped: true
+  });
 });
 
 test('interactive execution pauses on a stage-complete checkpoint and resumes with $prodify-resume', () => {
@@ -106,6 +108,7 @@ test('prompt builder includes runtime commands and current contract checkpoint c
     mode: 'interactive'
   });
 
+  assert.match(buildRuntimeCommandReference(), /prodify setup-agent <agent>/);
   assert.match(buildRuntimeCommandReference(), /\.prodify\/contracts\/\*\.contract\.json/);
   assert.match(buildRuntimeCommandReference({ concise: true }), /\$prodify-resume/);
   assert.match(buildBootstrapPrompt('codex'), /Read \.prodify\/AGENTS\.md/);

@@ -11,13 +11,14 @@ Define who owns canonical `.prodify/` files and how Prodify treats generated com
 - Prodify commands may create canonical files during `prodify init` or upgrade them during explicit upgrade operations.
 
 ### Generated Files
-- Generated compatibility files are derived artifacts.
+- Generated compatibility files are future or non-default derived artifacts.
 - They must always be reproducible from canonical `.prodify/` sources.
 - Users should not treat generated files as the place to make lasting changes.
 
 ## Overwrite Rules
 - `prodify sync` may overwrite managed generated files.
-- `prodify install --agent <target>` may create or overwrite the generated file for the selected target.
+- `prodify setup-agent <target>` must not write generated files into repositories.
+- If compatibility-file generation is reintroduced later, it must remain explicit and separate from repo initialization.
 - Prodify must not overwrite unmanaged files silently.
 - If a target path exists but is not recognized as Prodify-managed, Prodify must stop unless an explicit override flag is provided.
 

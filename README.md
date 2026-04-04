@@ -36,39 +36,50 @@ Inside the agent:
 - All durable workflow state lives in `.prodify/`.
 - Humans edit stage contracts under `.prodify/contracts-src/`.
 - Runtime execution reads only compiled contracts under `.prodify/contracts/`.
+- Product-owned skill definitions live under `.prodify/skills/`.
 - Stage outputs live under `.prodify/artifacts/`.
 - Local baseline/final/delta scoring lives under `.prodify/metrics/`.
 - This repository’s checked-in repo-root `.prodify/` directory is the self-hosting workspace for Prodify itself. It includes the generated runtime layout plus repo-specific design and development artifacts, so it is not a byte-for-byte snapshot of fresh `prodify init` output.
 
 ## User Flow
 
-1. Initialize the repository:
+1. Set up an agent once per machine:
+
+```sh
+prodify setup-agent codex
+```
+
+2. Initialize the repository:
 
 ```sh
 npm run build
 node ./dist/index.js init
 ```
 
-2. Open the supported agent you want to use.
+3. Open the supported agent you want to use.
 
 - Codex
 - Claude
 - Copilot
 - OpenCode
 
-3. Tell it: `Read .prodify/AGENTS.md and bootstrap Prodify for this repository.`
+4. Tell it: `Read .prodify/AGENTS.md and bootstrap Prodify for this repository.`
 
-4. Inside that agent, run `$prodify-init`.
+5. Inside that agent, run `$prodify-init`.
 
-5. Run `$prodify-execute` for stage-by-stage execution, or `$prodify-execute --auto` to continue until a hard stop.
+6. Run `$prodify-execute` for stage-by-stage execution, or `$prodify-execute --auto` to continue until a hard stop.
 
-6. If the flow pauses for validation or is interrupted, continue with `$prodify-resume`.
-7. Use `prodify status`, `prodify doctor`, and `prodify update` from the CLI to inspect or refresh the `.prodify/` scaffolding, compiled contracts, and local metrics workspace.
+7. If the flow pauses for validation or is interrupted, continue with `$prodify-resume`.
+8. Use `prodify status`, `prodify doctor`, and `prodify update` from the CLI to inspect or refresh the `.prodify/` scaffolding, compiled contracts, and local metrics workspace.
+
+Repo initialization stays agent-agnostic. The active agent is resolved when `$prodify-init` runs inside the opened agent, not when `prodify init` creates `.prodify/`.
 
 ## Contracts And Validation
 
 - Contract source files are Markdown with YAML frontmatter under `.prodify/contracts-src/`.
 - `prodify init` and `prodify update` compile those sources into deterministic runtime JSON under `.prodify/contracts/`.
+- Each stage can also declare bounded `skill_routing` metadata, while concrete skill definitions stay versioned under `.prodify/skills/`.
+- Status can report which stage skills were considered and activated from repository context, but contracts and validators remain authoritative.
 - Stage completion is gated by compiled-contract validation, not by agent assertion alone.
 - Validation checks required artifacts, write boundaries, forbidden writes, Markdown sections, JSON keys, and contract criteria.
 

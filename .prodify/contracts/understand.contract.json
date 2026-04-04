@@ -33,5 +33,10 @@
   "success_criteria": [
     "Known unknowns are listed explicitly.",
     "The repository intent is captured clearly."
-  ]
+  ],
+  "skill_routing": {
+    "default_skills": [],
+    "allowed_skills": [],
+    "conditional_skills": []
+  }
 }

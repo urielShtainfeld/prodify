@@ -14,6 +14,7 @@ After the agent reads this file, it should continue with `$prodify-init` and kee
 - Humans edit `.prodify/contracts-src/`; runtime reads only `.prodify/contracts/*.contract.json`.
 - No root-level `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `.opencode/AGENTS.md` is required for the main flow.
 - If this repository also contains a root `AGENTS.md`, treat it as repository-local contributor guidance unless explicitly documented otherwise.
+- Repository initialization remains agent-agnostic. The active agent is resolved when `$prodify-init` runs, not when `prodify init` creates `.prodify/`.
 - External CLI commands prepare and inspect the repo.
 - Runtime commands are executed inside the chosen coding agent.
 - Durable workflow state lives in `.prodify/state.json`.
@@ -21,6 +22,7 @@ After the agent reads this file, it should continue with `$prodify-init` and kee
 ## External CLI
 
 - `prodify init`
+- `prodify setup-agent`
 - `prodify status`
 - `prodify doctor`
 - `prodify update`

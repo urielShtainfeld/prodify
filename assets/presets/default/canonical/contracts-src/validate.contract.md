@@ -29,6 +29,35 @@ policy_rules:
 success_criteria:
   - Validation records whether regressions were found.
   - The result is strong enough to gate the next runtime transition.
+skill_routing:
+  default_skills:
+    - test-hardening
+    - validation-method
+  allowed_skills:
+    - react-frontend
+    - security-hardening
+    - test-hardening
+    - typescript-backend
+    - validation-method
+  conditional_skills:
+    - skill: react-frontend
+      when:
+        all:
+          - fact: framework
+            includes: react
+      reason: repo framework includes React
+    - skill: security-hardening
+      when:
+        all:
+          - fact: risk_signal
+            includes: external-dependencies
+      reason: repo carries external dependency risk
+    - skill: typescript-backend
+      when:
+        all:
+          - fact: language
+            includes: typescript
+      reason: repo language includes TypeScript
 ---
 # Validate Contract
 

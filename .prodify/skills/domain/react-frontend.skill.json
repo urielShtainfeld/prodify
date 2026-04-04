@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "id": "react-frontend",
+  "name": "React Frontend",
+  "version": "1.0.0",
+  "category": "domain",
+  "description": "Provides React-specific implementation and review guidance when a React surface is detected.",
+  "intended_use": [
+    "Use in understand, architecture, refactor, and validate when the repo framework includes React."
+  ],
+  "stage_compatibility": [
+    "architecture",
+    "refactor",
+    "understand",
+    "validate"
+  ],
+  "activation_conditions": [
+    {
+      "all": [
+        {
+          "fact": "framework",
+          "includes": "react"
+        }
+      ]
+    }
+  ],
+  "execution_guidance": [
+    "Preserve component boundaries and data-flow clarity.",
+    "Keep framework-specific advice subordinate to stage contracts."
+  ],
+  "caution_guidance": [
+    "Do not assume a frontend repo unless React evidence is present."
+  ]
+}

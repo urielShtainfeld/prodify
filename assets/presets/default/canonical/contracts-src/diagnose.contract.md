@@ -23,6 +23,26 @@ policy_rules:
 success_criteria:
   - Every critical issue is tied to evidence.
   - Root causes are separated from symptoms.
+skill_routing:
+  default_skills:
+    - diagnosis-method
+  allowed_skills:
+    - diagnosis-method
+    - maintainability-review
+    - security-hardening
+  conditional_skills:
+    - skill: maintainability-review
+      when:
+        all:
+          - fact: architecture_pattern
+            includes: layered-cli
+      reason: layered CLI ownership should be reviewed for maintainability
+    - skill: security-hardening
+      when:
+        all:
+          - fact: risk_signal
+            includes: external-dependencies
+      reason: repo carries external dependency risk
 ---
 # Diagnose Contract
 

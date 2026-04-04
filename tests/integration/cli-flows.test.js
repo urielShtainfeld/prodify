@@ -6,7 +6,7 @@ import path from 'node:path';
 import { runCli } from '../../dist/cli.js';
 import { bootstrapFlowState, failFlowStage, startFlowExecution } from '../../dist/core/flow-state.js';
 import { readRuntimeState, writeRuntimeState } from '../../dist/core/state.js';
-import { createTempRepo, memoryStream } from '../unit/helpers.js';
+import { createTempDir, createTempRepo, memoryStream } from '../unit/helpers.js';
 
 async function execCli(repoRoot, args) {
   const stdout = memoryStream();
@@ -45,6 +45,7 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Initialized Prodify/);
+  assert.match(result.stdout, /prodify setup-agent <agent>/);
   assert.match(result.stdout, /Manual bootstrap starts by telling your agent to read \.prodify\/AGENTS\.md/);
   assert.match(result.stdout, /Compiled runtime contracts were generated under \.prodify\/contracts\//);
   await fs.access(path.join(repoRoot, '.prodify', 'state.json'));
@@ -70,12 +71,45 @@ test('status becomes the primary user-facing summary after init', async () => {
   assert.match(result.stdout, /Canonical files: healthy/);
   assert.match(result.stdout, /Contract freshness: 6 compiled, synchronized/);
   assert.match(result.stdout, /Version\/schema: current/);
-  assert.match(result.stdout, /Primary agent runtime: none/);
+  assert.match(result.stdout, /Repo runtime binding: agent-agnostic/);
+  assert.match(result.stdout, /Global agent setup: none configured/);
+  assert.match(result.stdout, /Skill routing stage: understand/);
+  assert.match(result.stdout, /Skills considered: codebase-scanning/);
+  assert.match(result.stdout, /Skills active: codebase-scanning/);
   assert.match(result.stdout, /Execution state: not bootstrapped/);
   assert.match(result.stdout, /Stage validation: not run yet/);
   assert.match(result.stdout, /Manual bootstrap: ready/);
   assert.match(result.stdout, /Bootstrap prompt: Read \.prodify\/AGENTS\.md/);
-  assert.match(result.stdout, /Recommended next action: tell your agent:/);
+  assert.match(result.stdout, /Recommended next action: prodify setup-agent <agent>/);
+});
+
+test('setup-agent configures a supported agent globally without repo-local writes', async () => {
+  const cwd = await createTempDir();
+
+  const result = await execCli(cwd, ['setup-agent', 'codex']);
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Prodify Agent Setup/);
+  assert.match(result.stdout, /Agent: codex/);
+  assert.match(result.stdout, /Repo impact: none/);
+  await fs.access(path.join(cwd, '.prodify-home', 'agent-setup.json'));
+  await assertMissing(cwd, '.prodify');
+});
+
+test('multiple agents can be set up independently and status uses configured setup for bootstrap guidance', async () => {
+  const repoRoot = await createTempRepo();
+
+  await execCli(repoRoot, ['setup-agent', 'codex']);
+  await execCli(repoRoot, ['setup-agent', 'claude']);
+  await execCli(repoRoot, ['init']);
+
+  const result = await execCli(repoRoot, ['status', '--agent', 'claude']);
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Global agent setup: claude, codex/);
+  assert.match(result.stdout, /Skill routing stage: understand/);
+  assert.match(result.stdout, /Bootstrap profile: claude/);
+  assert.match(result.stdout, /tell your agent:/);
 });
 
 test('doctor validates healthy setup after init', async () => {
@@ -180,6 +214,7 @@ test('doctor fails clearly when .gitignore hides .prodify', async () => {
 
 test('runtime bootstrap and resume readiness are reflected in status', async () => {
   const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['setup-agent', 'codex']);
   await execCli(repoRoot, ['init']);
 
   const initial = await readRuntimeState(repoRoot, {
@@ -200,7 +235,10 @@ test('runtime bootstrap and resume readiness are reflected in status', async () 
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Workspace health: healthy/);
-  assert.match(result.stdout, /Primary agent runtime: codex/);
+  assert.match(result.stdout, /Repo runtime binding: agent-agnostic/);
+  assert.match(result.stdout, /Global agent setup: codex/);
+  assert.match(result.stdout, /Skill routing stage: understand/);
+  assert.match(result.stdout, /Skills active: codebase-scanning/);
   assert.match(result.stdout, /Execution state: understand_pending at understand \(01-understand\)/);
   assert.match(result.stdout, /Stage validation: not run yet/);
   assert.match(result.stdout, /Resumable: yes/);
@@ -209,6 +247,7 @@ test('runtime bootstrap and resume readiness are reflected in status', async () 
 
 test('status distinguishes stage-validation failure from workspace health issues', async () => {
   const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['setup-agent', 'codex']);
   await execCli(repoRoot, ['init']);
 
   const initial = await readRuntimeState(repoRoot, {
@@ -238,6 +277,7 @@ test('status distinguishes stage-validation failure from workspace health issues
 
 test('status can render a deterministic bootstrap prompt for a requested profile', async () => {
   const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['setup-agent', 'claude']);
   await execCli(repoRoot, ['init']);
 
   const result = await execCli(repoRoot, ['status', '--agent', 'claude']);
@@ -256,8 +296,10 @@ test('canonical runtime instructions live inside .prodify guidance', async () =>
 
   assert.match(guidance, /Read \.prodify\/AGENTS\.md and bootstrap Prodify/);
   assert.match(guidance, /\.prodify\/contracts-src\//);
+  assert.match(guidance, /prodify setup-agent/);
   assert.match(guidance, /\$prodify-init/);
   assert.match(runtimeCommands, /\$prodify-execute/);
+  assert.match(runtimeCommands, /prodify setup-agent/);
   assert.match(runtimeCommands, /compiled-contract validation/i);
   assert.match(runtimeCommands, /\$prodify-resume/);
 });
@@ -288,13 +330,17 @@ test('README and help output match the lifecycle model', async () => {
   const codexSupport = await fs.readFile(path.join(process.cwd(), 'docs', 'codex-support.md'), 'utf8');
   const help = await execCli(repoRoot, ['--help']);
 
+  assert.match(readme, /prodify setup-agent codex/);
   assert.match(readme, /prodify status/);
   assert.match(readme, /read `\.prodify\/AGENTS\.md`/i);
+  assert.match(readme, /`\.prodify\/skills\/`/);
   assert.match(readme, /No root-level agent files are required/i);
+  assert.match(readme, /Repo initialization stays agent-agnostic/i);
   assert.match(readme, /root `AGENTS\.md`.*repository-local contributor guidance/i);
   assert.doesNotMatch(readme, /prodify install --agent/);
   assert.match(compatibilityTargets, /do not create root-level compatibility files/i);
   assert.match(codexSupport, /not part of the default lifecycle/i);
+  assert.match(help.stdout, /prodify setup-agent/);
   assert.match(help.stdout, /prodify status/);
   assert.match(help.stdout, /prodify update/);
   assert.doesNotMatch(help.stdout, /prodify install/);

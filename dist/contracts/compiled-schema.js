@@ -26,7 +26,8 @@ export function validateCompiledContractShape(contract) {
                 allowed_write_roots: record.allowed_write_roots,
                 forbidden_writes: record.forbidden_writes,
                 policy_rules: record.policy_rules,
-                success_criteria: record.success_criteria
+                success_criteria: record.success_criteria,
+                skill_routing: record.skill_routing
             },
             body: 'compiled-contract'
         },

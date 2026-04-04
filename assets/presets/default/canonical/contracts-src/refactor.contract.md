@@ -26,6 +26,28 @@ policy_rules:
 success_criteria:
   - The selected plan step is implemented fully.
   - Unrelated files remain untouched.
+skill_routing:
+  default_skills:
+    - refactoring-method
+    - test-hardening
+  allowed_skills:
+    - react-frontend
+    - refactoring-method
+    - test-hardening
+    - typescript-backend
+  conditional_skills:
+    - skill: react-frontend
+      when:
+        all:
+          - fact: framework
+            includes: react
+      reason: repo framework includes React
+    - skill: typescript-backend
+      when:
+        all:
+          - fact: language
+            includes: typescript
+      reason: repo language includes TypeScript
 ---
 # Refactor Contract
 

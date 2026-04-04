@@ -1,54 +1,48 @@
-# `prodify install --agent <target>` Specification
+# `prodify setup-agent <target>` Specification
 
 ## Goal
-Define how Prodify installs compatibility files for a selected coding agent.
+Define how Prodify performs global, repo-neutral agent setup for a selected coding agent.
 
 ## Supported Invocation Shape
-- `prodify install --agent codex`
-- `prodify install --agent claude`
-- `prodify install --agent copilot`
-- `prodify install --agent opencode`
+- `prodify setup-agent codex`
+- `prodify setup-agent claude`
+- `prodify setup-agent copilot`
+- `prodify setup-agent opencode`
 
 ## Command Behavior
-1. Resolve repository root.
-2. Verify canonical `.prodify/` exists.
-3. Verify the selected agent target is known.
-4. Load canonical source file or files for the selected target.
-5. Generate the compatibility file using the target’s mapping rules.
-6. Write the generated file to the target path with the standard managed-file header.
+1. Verify the selected agent target is known.
+2. Detect the global setup root outside any repository.
+3. Register or refresh global runtime command availability for the selected agent.
+4. Record the configured agent in global setup state.
+5. Print next-step guidance for repo initialization and in-agent runtime use.
 
 ## Per-Agent Behavior
 
 ### Codex
-- Source: `.prodify/AGENTS.md`
-- Target: `AGENTS.md`
-- Generation: direct copy with generated header
+- Global setup target: Codex runtime environment
+- Repo impact: none
+- Runtime commands exposed: `$prodify-init`, `$prodify-execute`, `$prodify-resume`
 
 ### Claude
-- Source: `.prodify/AGENTS.md`
-- Target: `CLAUDE.md`
-- Generation: direct copy with generated header
-- Availability: planned; CLI may report “documented but not yet enabled”
+- Global setup target: Claude runtime environment
+- Repo impact: none
+- Runtime commands exposed: `$prodify-init`, `$prodify-execute`, `$prodify-resume`
 
 ### Copilot
-- Sources:
-  - `.prodify/AGENTS.md`
-  - `.prodify/project.md`
-- Target: `.github/copilot-instructions.md`
-- Generation: transformed output with generated header
-- Availability: planned; CLI may report “documented but not yet enabled”
+- Global setup target: Copilot runtime environment
+- Repo impact: none
+- Runtime commands exposed: `$prodify-init`, `$prodify-execute`, `$prodify-resume`
 
 ### OpenCode
-- Source: `.prodify/AGENTS.md`
-- Target: `.opencode/AGENTS.md`
-- Generation: direct copy with generated header
-- Availability: experimental and opt-in
+- Global setup target: OpenCode runtime environment
+- Repo impact: none
+- Runtime commands exposed: `$prodify-init`, `$prodify-execute`, `$prodify-resume`
 
 ## Canonical Safety Rule
-- `prodify install --agent <target>` must not modify canonical `.prodify/` source files.
-- The command may create parent directories for generated target paths.
+- `prodify setup-agent <target>` must not modify canonical `.prodify/` source files in any repository.
+- The command writes only to global setup state outside the repo.
 
 ## Conflict Rules
-- Managed existing file: may be updated subject to drift policy.
-- Unmanaged existing file: stop by default.
-- Experimental unsupported target: stop with a clear status message rather than guess.
+- Existing agent setup entry: may be refreshed.
+- Multiple configured agents must be allowed to coexist.
+- Unsupported target: stop with a clear status message rather than guess.

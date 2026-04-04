@@ -2,12 +2,10 @@
   "schema_version": "2",
   "preset_name": "default",
   "preset_version": "4.0.0",
-  "primary_agent": null,
   "runtime": {
     "status": "not_bootstrapped",
     "current_state": "not_bootstrapped",
     "mode": null,
-    "selected_agent": null,
     "current_stage": null,
     "current_task_id": null,
     "pending_stage": null,
@@ -20,9 +18,7 @@
     "blocked_reason": null,
     "failure_metadata": null,
     "bootstrap": {
-      "bootstrapped": false,
-      "agent": null,
-      "prompt": null
+      "bootstrapped": false
     },
     "next_action": "$prodify-init",
     "timestamps": {

@@ -23,6 +23,33 @@ policy_rules:
 success_criteria:
   - The target structure is explicit.
   - Architecture violations are listed clearly.
+skill_routing:
+  default_skills:
+    - architecture-method
+  allowed_skills:
+    - architecture-method
+    - maintainability-review
+    - react-frontend
+    - typescript-backend
+  conditional_skills:
+    - skill: maintainability-review
+      when:
+        all:
+          - fact: architecture_pattern
+            includes: contract-driven-runtime
+      reason: contract-driven runtime boundaries need maintainability review
+    - skill: react-frontend
+      when:
+        all:
+          - fact: framework
+            includes: react
+      reason: repo framework includes React
+    - skill: typescript-backend
+      when:
+        all:
+          - fact: language
+            includes: typescript
+      reason: repo language includes TypeScript
 ---
 # Architecture Contract
 

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "skills": [
+    "domain/react-frontend.skill.json",
+    "domain/typescript-backend.skill.json",
+    "quality-policy/maintainability-review.skill.json",
+    "quality-policy/security-hardening.skill.json",
+    "quality-policy/test-hardening.skill.json",
+    "stage-method/architecture-method.skill.json",
+    "stage-method/codebase-scanning.skill.json",
+    "stage-method/diagnosis-method.skill.json",
+    "stage-method/planning-method.skill.json",
+    "stage-method/refactoring-method.skill.json",
+    "stage-method/validation-method.skill.json"
+  ]
+}

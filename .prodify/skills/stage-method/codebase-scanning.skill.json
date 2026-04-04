@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "id": "codebase-scanning",
+  "name": "Codebase Scanning",
+  "version": "1.0.0",
+  "category": "stage-method",
+  "description": "Guides the understand stage toward deterministic inventory, dependency, and ownership mapping.",
+  "intended_use": [
+    "Use during understand to scan the repository surface before drawing conclusions."
+  ],
+  "stage_compatibility": [
+    "understand"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Inventory verified files and directories before summarizing the repository.",
+    "Prefer direct evidence over inferred structure."
+  ],
+  "caution_guidance": [
+    "Do not speculate about missing modules or undocumented ownership."
+  ]
+}

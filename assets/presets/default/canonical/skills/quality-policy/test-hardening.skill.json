@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "id": "test-hardening",
+  "name": "Test Hardening",
+  "version": "1.0.0",
+  "category": "quality-policy",
+  "description": "Improves confidence through regression-focused test additions or validation checks.",
+  "intended_use": [
+    "Use in refactor and validate when executable checks should be strengthened."
+  ],
+  "stage_compatibility": [
+    "refactor",
+    "validate"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Add or strengthen tests around the selected behavior change boundary.",
+    "Prefer deterministic assertions over snapshot-like broad checks."
+  ],
+  "caution_guidance": [
+    "Do not add unrelated test churn outside the selected step."
+  ]
+}

@@ -4,6 +4,8 @@ export type FlowStage = 'understand' | 'diagnose' | 'architecture' | 'plan' | 'r
 export type RuntimeStatus = 'not_bootstrapped' | 'ready' | 'running' | 'awaiting_validation' | 'blocked' | 'failed' | 'complete';
 export type ValidationResult = 'unknown' | 'pass' | 'fail' | 'inconclusive';
 export type ContractArtifactFormat = 'markdown' | 'json';
+export type SkillCategory = 'stage-method' | 'domain' | 'quality-policy';
+export type RepoContextFact = 'language' | 'framework' | 'project_type' | 'architecture_pattern' | 'risk_signal';
 export type ContractRuntimeState =
   | 'not_bootstrapped'
   | 'bootstrapped'
@@ -77,6 +79,46 @@ export interface CompiledContractArtifactRule {
   required_json_keys: string[];
 }
 
+export interface SkillConditionPredicate {
+  fact: RepoContextFact;
+  includes: string;
+}
+
+export interface SkillCondition {
+  all: SkillConditionPredicate[];
+}
+
+export interface SkillDefinition {
+  schema_version: string;
+  id: string;
+  name: string;
+  version: string;
+  category: SkillCategory;
+  description: string;
+  intended_use: string[];
+  stage_compatibility: FlowStage[];
+  activation_conditions: SkillCondition[];
+  execution_guidance: string[];
+  caution_guidance: string[];
+}
+
+export interface SkillRegistryManifest {
+  schema_version: string;
+  skills: string[];
+}
+
+export interface StageSkillRoutingRule {
+  skill: string;
+  when: SkillCondition;
+  reason: string;
+}
+
+export interface StageSkillRouting {
+  default_skills: string[];
+  allowed_skills: string[];
+  conditional_skills: StageSkillRoutingRule[];
+}
+
 export interface CompiledStageContract {
   schema_version: string;
   contract_version: string;
@@ -89,6 +131,7 @@ export interface CompiledStageContract {
   forbidden_writes: string[];
   policy_rules: string[];
   success_criteria: string[];
+  skill_routing: StageSkillRouting;
 }
 
 export interface ContractSourceDocument {
@@ -130,15 +173,12 @@ export interface RuntimeFailureMetadata {
 
 export interface RuntimeBootstrapMetadata {
   bootstrapped: boolean;
-  agent: RuntimeProfileName | null;
-  prompt: string | null;
 }
 
 export interface RuntimeStateBlock {
   status: RuntimeStatus;
   current_state: ContractRuntimeState;
   mode: ExecutionMode | null;
-  selected_agent: RuntimeProfileName | null;
   current_stage: FlowStage | null;
   current_task_id: string | null;
   pending_stage: FlowStage | null;
@@ -159,7 +199,6 @@ export interface ProdifyState {
   schema_version: string;
   preset_name: string;
   preset_version: string;
-  primary_agent: RuntimeProfileName | null;
   runtime: RuntimeStateBlock;
 }
 
@@ -179,6 +218,30 @@ export interface RuntimeProfile {
   nuances: string[];
 }
 
+export interface RepoContextSnapshot {
+  languages: string[];
+  frameworks: string[];
+  project_types: string[];
+  architecture_patterns: string[];
+  risk_signals: string[];
+}
+
+export interface SkillActivationRecord {
+  id: string;
+  name: string;
+  category: SkillCategory;
+  source: 'default' | 'conditional';
+  active: boolean;
+  reason: string;
+}
+
+export interface StageSkillResolution {
+  stage: FlowStage;
+  context: RepoContextSnapshot;
+  considered_skills: SkillActivationRecord[];
+  active_skill_ids: string[];
+}
+
 export interface VersionInspection {
   status: 'missing' | 'current' | 'outdated' | 'malformed';
   current: ParsedVersionMetadata | null;
@@ -194,13 +257,14 @@ export interface StatusReport {
   contractsOk: boolean;
   contractInventory: CompiledContractInventory | null;
   versionStatus: VersionInspection;
-  primaryAgent: RuntimeProfileName | null;
+  configuredAgents: RuntimeProfileName[];
   runtimeState: ProdifyState | null;
   runtimeStateError: Error | null;
   resumable: boolean;
   manualBootstrapReady: boolean;
   bootstrapProfile: RuntimeProfileName;
   bootstrapPrompt: string;
+  stageSkillResolution: StageSkillResolution | null;
   recommendedNextAction: string;
   presetMetadata: VersionMetadata;
 }
@@ -250,4 +314,16 @@ export interface ScoreDelta {
   baseline_score: number;
   final_score: number;
   delta: number;
+}
+
+export interface AgentSetupRecord {
+  agent: RuntimeProfileName;
+  display_name: string;
+  configured_at: string;
+  commands: string[];
+}
+
+export interface GlobalAgentSetupState {
+  schema_version: string;
+  configured_agents: Partial<Record<RuntimeProfileName, AgentSetupRecord>>;
 }

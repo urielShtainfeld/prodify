@@ -1,8 +1,11 @@
 import fs from 'node:fs/promises';
 import { loadDefaultPreset } from '../presets/loader.js';
 import { inspectCompiledContracts } from '../contracts/freshness.js';
+import { listConfiguredAgents, readGlobalAgentSetupState } from './agent-setup.js';
+import { detectRuntimeAgentFromEnv } from './agent-runtime.js';
 import { pathExists } from './fs.js';
 import { getResumeDecision } from './flow-state.js';
+import { resolveStageSkills } from './skill-resolution.js';
 import { resolveCanonicalPath, resolveRepoPath, REQUIRED_CANONICAL_PATHS } from './paths.js';
 import { readRuntimeState, RUNTIME_STATUS } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
@@ -56,6 +59,33 @@ function describeContractFreshness(report) {
     }
     return parts.join('; ') || 'invalid';
 }
+function describeGlobalAgentSetup(report) {
+    return report.configuredAgents.length === 0 ? 'none configured' : report.configuredAgents.join(', ');
+}
+function describeSkillStage(report) {
+    return report.stageSkillResolution?.stage ?? 'unavailable';
+}
+function describeConsideredSkills(report) {
+    if (!report.stageSkillResolution) {
+        return 'unavailable';
+    }
+    if (report.stageSkillResolution.considered_skills.length === 0) {
+        return 'none';
+    }
+    return report.stageSkillResolution.considered_skills
+        .map((skill) => `${skill.id} [${skill.reason}]`)
+        .join(', ');
+}
+function describeActiveSkills(report) {
+    if (!report.stageSkillResolution) {
+        return 'unavailable';
+    }
+    const activeSkills = report.stageSkillResolution.considered_skills.filter((skill) => skill.active);
+    if (activeSkills.length === 0) {
+        return 'none';
+    }
+    return activeSkills.map((skill) => `${skill.id} [${skill.reason}]`).join(', ');
+}
 function describeVersion(versionStatus, presetMetadata) {
     if (versionStatus.status === 'current') {
         return `current (${presetMetadata.name}@${presetMetadata.version}, schema ${presetMetadata.schemaVersion})`;
@@ -104,7 +134,7 @@ async function checkManualBootstrapGuidance(repoRoot) {
     const content = await fs.readFile(agentsPath, 'utf8');
     return hasManualBootstrapGuidance(content);
 }
-function deriveNextAction({ initialized, canonicalOk, contractsOk, versionStatus, runtimeState, runtimeStateError, bootstrapPrompt }) {
+function deriveNextAction({ initialized, canonicalOk, contractsOk, configuredAgents, versionStatus, runtimeState, runtimeStateError, bootstrapPrompt }) {
     if (!initialized) {
         return 'prodify init';
     }
@@ -115,6 +145,9 @@ function deriveNextAction({ initialized, canonicalOk, contractsOk, versionStatus
         return 'prodify update';
     }
     if (!runtimeState || runtimeState.runtime.status === RUNTIME_STATUS.NOT_BOOTSTRAPPED) {
+        if (configuredAgents.length === 0) {
+            return 'prodify setup-agent <agent>';
+        }
         return `tell your agent: "${bootstrapPrompt}"`;
     }
     if (runtimeState.runtime.current_state === 'failed' || runtimeState.runtime.last_validation_result === 'fail') {
@@ -130,7 +163,12 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
     const preset = await loadDefaultPreset();
     const prodifyPath = resolveRepoPath(repoRoot, '.prodify');
     const initialized = await pathExists(prodifyPath);
-    const bootstrapProfile = (getRuntimeProfile(options.agent ?? null)?.name ?? 'codex');
+    const configuredAgents = listConfiguredAgents(await readGlobalAgentSetupState({
+        allowMissing: true
+    }));
+    const bootstrapProfile = (getRuntimeProfile(options.agent ?? null)?.name
+        ?? detectRuntimeAgentFromEnv()
+        ?? (configuredAgents.length === 1 ? configuredAgents[0] : 'codex'));
     const bootstrapPrompt = buildBootstrapPrompt(bootstrapProfile);
     if (!initialized) {
         return {
@@ -146,13 +184,14 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
                 expected: preset.metadata,
                 schemaMigrationRequired: false
             },
-            primaryAgent: null,
+            configuredAgents,
             runtimeState: null,
             runtimeStateError: null,
             resumable: false,
             manualBootstrapReady: false,
             bootstrapProfile,
             bootstrapPrompt,
+            stageSkillResolution: null,
             recommendedNextAction: 'prodify init',
             presetMetadata: preset.metadata
         };
@@ -167,6 +206,7 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
     const versionStatus = await inspectVersionStatus(repoRoot, preset.metadata);
     let runtimeState = null;
     let runtimeStateError = null;
+    let stageSkillResolution = null;
     try {
         runtimeState = await readRuntimeState(repoRoot, {
             presetMetadata: preset.metadata
@@ -176,12 +216,18 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
         runtimeStateError = error instanceof Error ? error : new Error(String(error));
     }
     const manualBootstrapReady = await checkManualBootstrapGuidance(repoRoot);
+    const canonicalOk = missingPaths.length === 0;
+    if (canonicalOk && contractInventory.ok) {
+        const skillStage = runtimeState?.runtime.current_stage
+            ?? runtimeState?.runtime.pending_stage
+            ?? 'understand';
+        stageSkillResolution = await resolveStageSkills(repoRoot, skillStage);
+    }
     const resume = runtimeState ? getResumeDecision(runtimeState) : {
         resumable: false,
         command: null,
         reason: runtimeStateError?.message ?? 'runtime unavailable'
     };
-    const canonicalOk = missingPaths.length === 0;
     const stageValidationFailed = runtimeState?.runtime.current_state === 'failed'
         || runtimeState?.runtime.last_validation_result === 'fail';
     return {
@@ -198,17 +244,19 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
         contractsOk: contractInventory.ok,
         contractInventory,
         versionStatus,
-        primaryAgent: runtimeState?.primary_agent ?? null,
+        configuredAgents,
         runtimeState,
         runtimeStateError,
         resumable: resume.resumable,
         manualBootstrapReady,
         bootstrapProfile,
         bootstrapPrompt,
+        stageSkillResolution,
         recommendedNextAction: deriveNextAction({
             initialized,
             canonicalOk,
             contractsOk: contractInventory.ok,
+            configuredAgents,
             versionStatus,
             runtimeState,
             runtimeStateError,
@@ -225,7 +273,11 @@ export function renderStatusReport(report) {
         `Canonical files: ${describeCanonicalHealth(report.canonicalMissing)}`,
         `Contract freshness: ${describeContractFreshness(report)}`,
         `Version/schema: ${describeVersion(report.versionStatus, report.presetMetadata)}`,
-        `Primary agent runtime: ${report.primaryAgent ?? 'none'}`,
+        'Repo runtime binding: agent-agnostic',
+        `Global agent setup: ${describeGlobalAgentSetup(report)}`,
+        `Skill routing stage: ${describeSkillStage(report)}`,
+        `Skills considered: ${describeConsideredSkills(report)}`,
+        `Skills active: ${describeActiveSkills(report)}`,
         `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
         `Stage validation: ${describeStageValidation(report)}`,
         `Manual bootstrap: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/AGENTS.md guidance'}`,

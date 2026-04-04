@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "id": "diagnosis-method",
+  "name": "Diagnosis Method",
+  "version": "1.0.0",
+  "category": "stage-method",
+  "description": "Keeps diagnosis anchored to observed evidence, root causes, and production-readiness risks.",
+  "intended_use": [
+    "Use during diagnose to separate symptoms, causes, and unsupported claims."
+  ],
+  "stage_compatibility": [
+    "diagnose"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Tie every issue to observable evidence.",
+    "Separate root causes from downstream symptoms."
+  ],
+  "caution_guidance": [
+    "Do not prescribe implementation changes in the diagnosis stage."
+  ]
+}

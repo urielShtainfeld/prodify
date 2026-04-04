@@ -30,6 +30,7 @@ export async function runInitCommand(args: string[], context: CommandContext): P
   await synchronizeRuntimeContracts(repoRoot);
 
   context.stdout.write(`Initialized Prodify in ${repoRoot}\n`);
+  context.stdout.write('Global agent setup is separate: run `prodify setup-agent <agent>` once per machine before using `$prodify-*` commands inside that agent\n');
   context.stdout.write('Manual bootstrap starts by telling your agent to read .prodify/AGENTS.md\n');
   context.stdout.write('Compiled runtime contracts were generated under .prodify/contracts/\n');
   return 0;

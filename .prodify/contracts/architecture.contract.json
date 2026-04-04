@@ -33,5 +33,10 @@
   "success_criteria": [
     "Architecture violations are listed clearly.",
     "The target structure is explicit."
-  ]
+  ],
+  "skill_routing": {
+    "default_skills": [],
+    "allowed_skills": [],
+    "conditional_skills": []
+  }
 }

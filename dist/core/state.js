@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import { ProdifyError } from './errors.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
-import { isRuntimeProfileName, resolveCanonicalPath } from './paths.js';
+import { resolveCanonicalPath } from './paths.js';
 export const RUNTIME_STATE_SCHEMA_VERSION = '2';
 export const RUNTIME_STATUS = {
     NOT_BOOTSTRAPPED: 'not_bootstrapped',
@@ -68,9 +68,7 @@ function asRecord(value) {
 function normalizeBootstrapMetadata(value) {
     const record = asRecord(value);
     return {
-        bootstrapped: Boolean(record.bootstrapped),
-        agent: isRuntimeProfileName(record.agent) ? record.agent : null,
-        prompt: typeof record.prompt === 'string' ? record.prompt : null
+        bootstrapped: Boolean(record.bootstrapped)
     };
 }
 function normalizeFailureMetadata(value) {
@@ -128,12 +126,10 @@ export function createInitialRuntimeState({ presetMetadata }) {
         schema_version: RUNTIME_STATE_SCHEMA_VERSION,
         preset_name: presetMetadata.name,
         preset_version: presetMetadata.version,
-        primary_agent: null,
         runtime: {
             status: RUNTIME_STATUS.NOT_BOOTSTRAPPED,
             current_state: 'not_bootstrapped',
             mode: null,
-            selected_agent: null,
             current_stage: null,
             current_task_id: null,
             pending_stage: null,
@@ -146,9 +142,7 @@ export function createInitialRuntimeState({ presetMetadata }) {
             blocked_reason: null,
             failure_metadata: null,
             bootstrap: {
-                bootstrapped: false,
-                agent: null,
-                prompt: null
+                bootstrapped: false
             },
             next_action: '$prodify-init',
             timestamps: {
@@ -166,7 +160,6 @@ function normalizeRuntimeBlock(runtime) {
         status: isRuntimeStatus(record.status) ? record.status : RUNTIME_STATUS.NOT_BOOTSTRAPPED,
         current_state: isRuntimeContractState(record.current_state) ? record.current_state : 'not_bootstrapped',
         mode: isExecutionMode(record.mode) ? record.mode : null,
-        selected_agent: isRuntimeProfileName(record.selected_agent) ? record.selected_agent : null,
         current_stage: isFlowStage(record.current_stage) ? record.current_stage : null,
         current_task_id: typeof record.current_task_id === 'string' ? record.current_task_id : null,
         pending_stage: isFlowStage(record.pending_stage) ? record.pending_stage : null,
@@ -195,7 +188,6 @@ export function normalizeRuntimeState(raw, { presetMetadata }) {
         schema_version: base.schema_version,
         preset_name: presetMetadata.name,
         preset_version: presetMetadata.version,
-        primary_agent: isRuntimeProfileName(record.primary_agent) ? record.primary_agent : null,
         runtime: normalizeRuntimeBlock(record.runtime)
     };
 }

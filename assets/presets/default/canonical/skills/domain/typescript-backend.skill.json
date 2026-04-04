@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "id": "typescript-backend",
+  "name": "TypeScript Backend",
+  "version": "1.0.0",
+  "category": "domain",
+  "description": "Applies TypeScript service and CLI implementation guidance when the repository is TypeScript-based.",
+  "intended_use": [
+    "Use in architecture, refactor, and validate when the repo language includes TypeScript."
+  ],
+  "stage_compatibility": [
+    "architecture",
+    "refactor",
+    "understand",
+    "validate"
+  ],
+  "activation_conditions": [
+    {
+      "all": [
+        {
+          "fact": "language",
+          "includes": "typescript"
+        }
+      ]
+    }
+  ],
+  "execution_guidance": [
+    "Prefer type-safe interfaces and explicit runtime-state normalization.",
+    "Keep generated JavaScript output aligned with TypeScript sources."
+  ],
+  "caution_guidance": [
+    "Do not rely on implicit any-style assumptions when shaping refactors."
+  ]
+}

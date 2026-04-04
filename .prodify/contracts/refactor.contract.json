@@ -36,5 +36,10 @@
   "success_criteria": [
     "The selected plan step is implemented fully.",
     "Unrelated files remain untouched."
-  ]
+  ],
+  "skill_routing": {
+    "default_skills": [],
+    "allowed_skills": [],
+    "conditional_skills": []
+  }
 }

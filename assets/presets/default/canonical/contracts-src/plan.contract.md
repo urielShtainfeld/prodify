@@ -23,6 +23,19 @@ policy_rules:
 success_criteria:
   - The plan enumerates executable steps.
   - Verification is defined before refactoring starts.
+skill_routing:
+  default_skills:
+    - planning-method
+  allowed_skills:
+    - maintainability-review
+    - planning-method
+  conditional_skills:
+    - skill: maintainability-review
+      when:
+        all:
+          - fact: project_type
+            includes: cli
+      reason: CLI lifecycle changes should be reviewed for maintainability
 ---
 # Plan Contract
 

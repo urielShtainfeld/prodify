@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "id": "validation-method",
+  "name": "Validation Method",
+  "version": "1.0.0",
+  "category": "stage-method",
+  "description": "Ensures validation checks regressions, contract conformance, and structural improvements explicitly.",
+  "intended_use": [
+    "Use during validate to assess pass or fail after refactor work."
+  ],
+  "stage_compatibility": [
+    "validate"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Check contract conformance before interpreting broader quality signals.",
+    "Record regressions and architecture violations explicitly."
+  ],
+  "caution_guidance": [
+    "Do not treat validation as optional after refactor."
+  ]
+}

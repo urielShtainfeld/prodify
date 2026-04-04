@@ -1,0 +1,25 @@
+{
+  "schema_version": "1",
+  "id": "maintainability-review",
+  "name": "Maintainability Review",
+  "version": "1.0.0",
+  "category": "quality-policy",
+  "description": "Highlights readability, ownership, and long-term support risks without redefining success criteria.",
+  "intended_use": [
+    "Use in diagnose, architecture, and plan when maintainability concerns are relevant."
+  ],
+  "stage_compatibility": [
+    "architecture",
+    "diagnose",
+    "plan",
+    "understand"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Call out mixed concerns and unclear ownership paths.",
+    "Prefer small, explainable structure improvements."
+  ],
+  "caution_guidance": [
+    "Do not replace contract validation with style preference."
+  ]
+}

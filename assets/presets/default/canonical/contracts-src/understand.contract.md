@@ -23,6 +23,33 @@ policy_rules:
 success_criteria:
   - The repository intent is captured clearly.
   - Known unknowns are listed explicitly.
+skill_routing:
+  default_skills:
+    - codebase-scanning
+  allowed_skills:
+    - codebase-scanning
+    - maintainability-review
+    - react-frontend
+    - typescript-backend
+  conditional_skills:
+    - skill: maintainability-review
+      when:
+        all:
+          - fact: project_type
+            includes: cli
+      reason: repo exposes a CLI surface
+    - skill: react-frontend
+      when:
+        all:
+          - fact: framework
+            includes: react
+      reason: repo framework includes React
+    - skill: typescript-backend
+      when:
+        all:
+          - fact: language
+            includes: typescript
+      reason: repo language includes TypeScript
 ---
 # Understand Contract
 

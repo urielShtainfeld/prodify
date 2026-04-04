@@ -1,7 +1,6 @@
 import { ProdifyError } from './errors.js';
 import { isRuntimeProfileName } from './paths.js';
 import { RUNTIME_STATUS } from './state.js';
-import { buildBootstrapPrompt } from './prompt-builder.js';
 export const STAGE_ORDER = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
 const STAGE_TASK_IDS = {
     understand: '01-understand',
@@ -83,11 +82,9 @@ export function bootstrapFlowState(state, { agent, mode = 'interactive', now = n
     assertAgent(agent);
     assertMode(mode);
     const nextState = cloneState(state);
-    nextState.primary_agent = agent;
     nextState.runtime.status = RUNTIME_STATUS.READY;
     nextState.runtime.current_state = 'bootstrapped';
     nextState.runtime.mode = mode;
-    nextState.runtime.selected_agent = agent;
     nextState.runtime.current_stage = null;
     nextState.runtime.current_task_id = null;
     nextState.runtime.pending_stage = STAGE_ORDER[0];
@@ -100,9 +97,7 @@ export function bootstrapFlowState(state, { agent, mode = 'interactive', now = n
     nextState.runtime.blocked_reason = null;
     nextState.runtime.failure_metadata = null;
     nextState.runtime.bootstrap = {
-        bootstrapped: true,
-        agent,
-        prompt: buildBootstrapPrompt(agent)
+        bootstrapped: true
     };
     nextState.runtime.next_action = mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute';
     nextState.runtime.timestamps.bootstrapped_at = nextState.runtime.timestamps.bootstrapped_at ?? now;

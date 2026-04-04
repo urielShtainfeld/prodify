@@ -10,6 +10,7 @@ test('cli help includes all command names', async () => {
   const exitCode = await runCli(['--help'], { cwd: process.cwd(), stdout, stderr });
 
   assert.equal(exitCode, 0);
+  assert.match(stdout.toString(), /\bsetup-agent\b/);
   assert.match(stdout.toString(), /\binit\b/);
   assert.match(stdout.toString(), /\bstatus\b/);
   assert.match(stdout.toString(), /\bdoctor\b/);
@@ -19,8 +20,9 @@ test('cli help includes all command names', async () => {
 });
 
 test('command registry exposes only the lifecycle commands publicly', () => {
-  assert.deepEqual(PUBLIC_COMMANDS, ['init', 'status', 'doctor', 'update']);
-  assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'status', 'update']);
+  assert.deepEqual(PUBLIC_COMMANDS, ['init', 'setup-agent', 'status', 'doctor', 'update']);
+  assert.deepEqual(Object.keys(COMMANDS).sort(), ['doctor', 'init', 'setup-agent', 'status', 'update']);
+  assert.match(renderHelp(), /prodify setup-agent/);
   assert.match(renderHelp(), /prodify status/);
   assert.match(renderHelp(), /prodify update/);
 });

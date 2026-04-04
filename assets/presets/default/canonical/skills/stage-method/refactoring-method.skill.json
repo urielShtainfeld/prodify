@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "id": "refactoring-method",
+  "name": "Refactoring Method",
+  "version": "1.0.0",
+  "category": "stage-method",
+  "description": "Keeps refactor work bounded to a single selected step with minimal diff discipline.",
+  "intended_use": [
+    "Use during refactor when implementing one approved plan step."
+  ],
+  "stage_compatibility": [
+    "refactor"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Implement one planned step at a time.",
+    "Preserve behavior unless the plan explicitly authorizes a change."
+  ],
+  "caution_guidance": [
+    "Do not expand the edit set beyond the selected step."
+  ]
+}

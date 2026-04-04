@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "id": "architecture-method",
+  "name": "Architecture Method",
+  "version": "1.0.0",
+  "category": "stage-method",
+  "description": "Focuses architecture work on boundaries, dependency direction, and modular responsibility splits.",
+  "intended_use": [
+    "Use during architecture to propose structural changes that preserve the contract model."
+  ],
+  "stage_compatibility": [
+    "architecture"
+  ],
+  "activation_conditions": [],
+  "execution_guidance": [
+    "Describe boundaries before proposing new modules or layers.",
+    "Flag mixed concerns and outward domain dependencies explicitly."
+  ],
+  "caution_guidance": [
+    "Do not treat architecture guidance as permission to rewrite unrelated code."
+  ]
+}

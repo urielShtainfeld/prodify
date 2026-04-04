@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "id": "security-hardening",
+  "name": "Security Hardening",
+  "version": "1.0.0",
+  "category": "quality-policy",
+  "description": "Applies explicit scrutiny when the repository has exposed surfaces or dependency risk signals.",
+  "intended_use": [
+    "Use in diagnose and validate when risk signals suggest stronger security review."
+  ],
+  "stage_compatibility": [
+    "diagnose",
+    "validate"
+  ],
+  "activation_conditions": [
+    {
+      "all": [
+        {
+          "fact": "risk_signal",
+          "includes": "external-dependencies"
+        }
+      ]
+    }
+  ],
+  "execution_guidance": [
+    "Check exposed command or network surfaces before declaring validation success.",
+    "Treat dependency-driven risk as additive evidence, not a blocker by itself."
+  ],
+  "caution_guidance": [
+    "Do not infer a security defect without repository evidence."
+  ]
+}

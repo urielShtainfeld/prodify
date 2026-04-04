@@ -1,5 +1,6 @@
 import { runDoctorCommand } from './commands/doctor.js';
 import { runInitCommand } from './commands/init.js';
+import { runSetupAgentCommand } from './commands/setup-agent.js';
 import { runStatusCommand } from './commands/status.js';
 import { runUpdateCommand } from './commands/update.js';
 import { ProdifyError, toErrorMessage } from './core/errors.js';
@@ -7,23 +8,26 @@ import type { CommandContext, CommandHandler } from './types.js';
 
 export const COMMANDS: Record<string, CommandHandler> = {
   init: runInitCommand,
+  'setup-agent': runSetupAgentCommand,
   status: runStatusCommand,
   doctor: runDoctorCommand,
   update: runUpdateCommand
 };
 
-export const PUBLIC_COMMANDS = ['init', 'status', 'doctor', 'update'] as const;
+export const PUBLIC_COMMANDS = ['init', 'setup-agent', 'status', 'doctor', 'update'] as const;
 
 export function renderHelp(): string {
   return [
     'Prodify CLI',
     '',
     'Usage:',
+    '  prodify setup-agent <codex|claude|copilot|opencode>',
     '  prodify init',
     '  prodify status',
     '  prodify doctor',
     '  prodify update',
     '',
+    'Global agent setup is separate from per-repository init.',
     'The primary flow is .prodify-first and contract-driven.'
   ].join('\n');
 }

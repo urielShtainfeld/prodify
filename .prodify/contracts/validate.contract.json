@@ -43,5 +43,10 @@
   "success_criteria": [
     "The result is strong enough to gate the next runtime transition.",
     "Validation records whether regressions were found."
-  ]
+  ],
+  "skill_routing": {
+    "default_skills": [],
+    "allowed_skills": [],
+    "conditional_skills": []
+  }
 }

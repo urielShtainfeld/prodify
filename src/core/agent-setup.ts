@@ -10,6 +10,126 @@ import type { GlobalAgentSetupState, RuntimeProfileName } from '../types.js';
 export const GLOBAL_AGENT_SETUP_SCHEMA_VERSION = '1';
 export const PRODIFY_RUNTIME_COMMANDS = ['$prodify-init', '$prodify-execute', '$prodify-resume'] as const;
 
+function resolveCodexHome(env: NodeJS.ProcessEnv = process.env): string {
+  const explicit = env.CODEX_HOME?.trim();
+  if (explicit) {
+    return path.resolve(explicit);
+  }
+
+  return path.join(os.homedir(), '.codex');
+}
+
+function resolveCodexSkillsRoot(env: NodeJS.ProcessEnv = process.env): string {
+  return path.join(resolveCodexHome(env), 'skills');
+}
+
+function renderCodexSkill(name: 'prodify-init' | 'prodify-execute' | 'prodify-resume'): string {
+  if (name === 'prodify-init') {
+    return `---
+name: "prodify-init"
+description: "Bootstrap Prodify inside the current repository."
+metadata:
+  short-description: "Bootstrap Prodify inside the current repository."
+---
+
+<codex_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked by mentioning \`$prodify-init\`.
+- Ignore trailing arguments unless the repository-specific runtime instructions require them.
+</codex_skill_adapter>
+
+# prodify-init
+
+Use this runtime bridge to bootstrap Prodify inside the current repository.
+
+Load and follow, in this order:
+- \`.prodify/AGENTS.md\`
+- \`.prodify/runtime-commands.md\`
+- \`.prodify/state.json\`
+
+Keep the runtime anchored to \`.prodify/\`.
+Do not substitute compatibility files for the canonical \`.prodify/AGENTS.md\` entrypoint.
+
+Available runtime commands:
+- \`$prodify-init\`
+- \`$prodify-execute\`
+- \`$prodify-execute --auto\`
+- \`$prodify-resume\`
+`;
+  }
+
+  if (name === 'prodify-execute') {
+    return `---
+name: "prodify-execute"
+description: "Execute the next Prodify workflow stage inside the current repository."
+metadata:
+  short-description: "Execute the next Prodify workflow stage."
+---
+
+<codex_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked by mentioning \`$prodify-execute\`.
+- Treat all user text after \`$prodify-execute\` as \`{{PRODIFY_EXECUTE_ARGS}}\`.
+- If no arguments are present, treat \`{{PRODIFY_EXECUTE_ARGS}}\` as empty.
+</codex_skill_adapter>
+
+# prodify-execute
+
+Use this runtime bridge to execute the next Prodify workflow stage.
+
+Load and follow, in this order:
+- \`.prodify/runtime-commands.md\`
+- \`.prodify/state.json\`
+- \`.prodify/AGENTS.md\`
+
+Interpret \`{{PRODIFY_EXECUTE_ARGS}}\` as the runtime command arguments.
+- empty: run \`$prodify-execute\`
+- \`--auto\`: run \`$prodify-execute --auto\`
+
+Keep all execution state, artifacts, contracts, and validation anchored to \`.prodify/\`.
+`;
+  }
+
+  return `---
+name: "prodify-resume"
+description: "Resume a paused Prodify run from saved runtime state."
+metadata:
+  short-description: "Resume a paused Prodify run."
+---
+
+<codex_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked by mentioning \`$prodify-resume\`.
+- Treat trailing arguments as optional runtime-specific hints only when the repository guidance explicitly supports them.
+</codex_skill_adapter>
+
+# prodify-resume
+
+Use this runtime bridge to resume Prodify from saved runtime state.
+
+Load and follow, in this order:
+- \`.prodify/runtime-commands.md\`
+- \`.prodify/state.json\`
+- \`.prodify/AGENTS.md\`
+
+Resume from the current state recorded under \`.prodify/state.json\`.
+Preserve validation checkpoints and stop clearly if the state is corrupt or non-resumable.
+`;
+}
+
+async function installCodexRuntimeCommands(env: NodeJS.ProcessEnv = process.env): Promise<string[]> {
+  const skillsRoot = resolveCodexSkillsRoot(env);
+  const installedFiles: string[] = [];
+
+  for (const command of ['prodify-init', 'prodify-execute', 'prodify-resume'] as const) {
+    const skillPath = path.join(skillsRoot, command, 'SKILL.md');
+    await writeFileEnsuringDir(skillPath, renderCodexSkill(command));
+    installedFiles.push(skillPath);
+  }
+
+  return installedFiles;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
 }
@@ -116,7 +236,7 @@ export async function setupAgentIntegration(
     now?: string;
     env?: NodeJS.ProcessEnv;
   } = {}
-): Promise<{ statePath: string; configuredAgents: RuntimeProfileName[]; alreadyConfigured: boolean }> {
+): Promise<{ statePath: string; configuredAgents: RuntimeProfileName[]; alreadyConfigured: boolean; installedPaths: string[] }> {
   const profile = getRuntimeProfile(agent);
   if (!profile) {
     throw new ProdifyError('setup-agent requires <codex|claude|copilot|opencode>.', {
@@ -138,10 +258,14 @@ export async function setupAgentIntegration(
     commands: [...PRODIFY_RUNTIME_COMMANDS]
   };
 
+  const installedPaths = profile.name === 'codex'
+    ? await installCodexRuntimeCommands(env)
+    : [];
   const statePath = await writeGlobalAgentSetupState(nextState, { env });
   return {
     statePath,
     configuredAgents: listConfiguredAgents(nextState),
-    alreadyConfigured
+    alreadyConfigured,
+    installedPaths
   };
 }

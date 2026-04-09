@@ -17,6 +17,9 @@ export async function runSetupAgentCommand(args, context) {
     context.stdout.write(`Status: ${result.alreadyConfigured ? 'already configured globally; refreshed' : 'configured globally'}\n`);
     context.stdout.write(`Configured agents: ${result.configuredAgents.join(', ')}\n`);
     context.stdout.write(`Registry: ${result.statePath}\n`);
+    if (result.installedPaths.length > 0) {
+        context.stdout.write(`Installed runtime commands: ${result.installedPaths.join(', ')}\n`);
+    }
     context.stdout.write('Repo impact: none\n');
     context.stdout.write('Next step: run `prodify init` in a repository, then open that agent and use `$prodify-init`.\n');
     return 0;

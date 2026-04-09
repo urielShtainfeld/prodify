@@ -56,16 +56,29 @@ export async function resolveRepoRoot(options: ResolveRepoRootOptions = {}): Pro
     return explicitRepo;
   }
 
-  const prodifyRoot = await searchUpwards(cwd, async (candidate) => directoryHas(candidate, '.prodify'));
-  if (prodifyRoot) {
-    return prodifyRoot;
-  }
+  let current = cwd;
 
-  if (allowBootstrap) {
-    const gitRoot = await searchUpwards(cwd, async (candidate) => directoryHas(candidate, '.git'));
-    if (gitRoot) {
-      return gitRoot;
+  while (true) {
+    const hasProdify = await directoryHas(current, '.prodify');
+    if (hasProdify) {
+      return current;
     }
+
+    const hasGit = await directoryHas(current, '.git');
+    if (hasGit) {
+      if (allowBootstrap) {
+        return current;
+      }
+
+      break;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
   }
 
   throw new ProdifyError('Could not resolve repository root from the current working directory.', {

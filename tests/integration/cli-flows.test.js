@@ -60,6 +60,19 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
   await assertMissing(repoRoot, '.opencode/AGENTS.md');
 });
 
+test('init prefers the current git repo over an unrelated ancestor .prodify workspace', async () => {
+  const outerRepo = await createTempRepo('prodify-outer-');
+  await execCli(outerRepo, ['init']);
+
+  const nestedRepo = path.join(outerRepo, 'nested-app');
+  await fs.mkdir(path.join(nestedRepo, '.git'), { recursive: true });
+
+  const result = await execCli(nestedRepo, ['init']);
+
+  assert.equal(result.exitCode, 0);
+  await fs.access(path.join(nestedRepo, '.prodify', 'state.json'));
+});
+
 test('status becomes the primary user-facing summary after init', async () => {
   const repoRoot = await createTempRepo();
   await execCli(repoRoot, ['init']);
@@ -85,14 +98,19 @@ test('status becomes the primary user-facing summary after init', async () => {
 
 test('setup-agent configures a supported agent globally without repo-local writes', async () => {
   const cwd = await createTempDir();
+  process.env.CODEX_HOME = path.join(cwd, '.codex-home');
 
   const result = await execCli(cwd, ['setup-agent', 'codex']);
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Prodify Agent Setup/);
   assert.match(result.stdout, /Agent: codex/);
+  assert.match(result.stdout, /Installed runtime commands:/);
   assert.match(result.stdout, /Repo impact: none/);
   await fs.access(path.join(cwd, '.prodify-home', 'agent-setup.json'));
+  await fs.access(path.join(cwd, '.codex-home', 'skills', 'prodify-init', 'SKILL.md'));
+  await fs.access(path.join(cwd, '.codex-home', 'skills', 'prodify-execute', 'SKILL.md'));
+  await fs.access(path.join(cwd, '.codex-home', 'skills', 'prodify-resume', 'SKILL.md'));
   await assertMissing(cwd, '.prodify');
 });
 

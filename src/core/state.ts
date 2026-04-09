@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import { ProdifyError } from './errors.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { isRuntimeProfileName, resolveCanonicalPath } from './paths.js';
+import { writeRefactorBaselineSnapshot } from './diff-validator.js';
+import { syncScoreArtifactsForRuntimeState } from '../scoring/model.js';
 import type {
   ExecutionMode,
   FlowStage,
@@ -261,4 +263,8 @@ export async function readRuntimeState(
 export async function writeRuntimeState(repoRoot: string, state: ProdifyState): Promise<void> {
   const statePath = resolveCanonicalPath(repoRoot, '.prodify/state.json');
   await writeFileEnsuringDir(statePath, serializeRuntimeState(state));
+  if (state.runtime.current_state === 'refactor_pending') {
+    await writeRefactorBaselineSnapshot(repoRoot);
+  }
+  await syncScoreArtifactsForRuntimeState(repoRoot, state);
 }

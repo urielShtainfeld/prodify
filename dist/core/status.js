@@ -11,6 +11,7 @@ import { readRuntimeState, RUNTIME_STATUS } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
 import { buildBootstrapPrompt, hasManualBootstrapGuidance } from './prompt-builder.js';
 import { getRuntimeProfile } from './targets.js';
+import { readScoreDelta } from '../scoring/model.js';
 function describeCanonicalHealth(missingPaths) {
     if (missingPaths.length === 0) {
         return 'healthy';
@@ -126,6 +127,14 @@ function describeStageValidation(report) {
         ? `last pass at ${runtime.last_validation.stage} (contract ${runtime.last_validation.contract_version})`
         : `failed at ${runtime.last_validation.stage}`;
 }
+function describeImpactScore(scoreDelta) {
+    if (!scoreDelta) {
+        return 'not available';
+    }
+    const threshold = scoreDelta.min_impact_score !== undefined ? `, threshold=${scoreDelta.min_impact_score}` : '';
+    const verdict = scoreDelta.passed === undefined ? '' : `, passed=${scoreDelta.passed}`;
+    return `${scoreDelta.baseline_score} -> ${scoreDelta.final_score} (delta ${scoreDelta.delta}${threshold}${verdict})`;
+}
 async function checkManualBootstrapGuidance(repoRoot) {
     const agentsPath = resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md');
     if (!(await pathExists(agentsPath))) {
@@ -192,6 +201,7 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
             bootstrapProfile,
             bootstrapPrompt,
             stageSkillResolution: null,
+            scoreDelta: null,
             recommendedNextAction: 'prodify init',
             presetMetadata: preset.metadata
         };
@@ -207,6 +217,7 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
     let runtimeState = null;
     let runtimeStateError = null;
     let stageSkillResolution = null;
+    let scoreDelta = null;
     try {
         runtimeState = await readRuntimeState(repoRoot, {
             presetMetadata: preset.metadata
@@ -216,6 +227,7 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
         runtimeStateError = error instanceof Error ? error : new Error(String(error));
     }
     const manualBootstrapReady = await checkManualBootstrapGuidance(repoRoot);
+    scoreDelta = await readScoreDelta(repoRoot);
     const canonicalOk = missingPaths.length === 0;
     if (canonicalOk && contractInventory.ok) {
         const skillStage = runtimeState?.runtime.current_stage
@@ -252,6 +264,7 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
         bootstrapProfile,
         bootstrapPrompt,
         stageSkillResolution,
+        scoreDelta,
         recommendedNextAction: deriveNextAction({
             initialized,
             canonicalOk,
@@ -280,6 +293,7 @@ export function renderStatusReport(report) {
         `Skills active: ${describeActiveSkills(report)}`,
         `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
         `Stage validation: ${describeStageValidation(report)}`,
+        `Impact score: ${describeImpactScore(report.scoreDelta)}`,
         `Manual bootstrap: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/AGENTS.md guidance'}`,
         `Bootstrap profile: ${report.bootstrapProfile}`,
         `Bootstrap prompt: ${report.bootstrapPrompt}`,

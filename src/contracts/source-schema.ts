@@ -40,6 +40,48 @@ function asOptionalStringArray(value: unknown, fieldName: string): string[] {
   return asStringArray(value, fieldName);
 }
 
+function asOptionalNonNegativeInteger(value: unknown, fieldName: string, fallback = 0): number {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new ProdifyError(`Contract frontmatter field "${fieldName}" must be a non-negative integer.`, {
+      code: 'CONTRACT_SCHEMA_INVALID'
+    });
+  }
+
+  return value;
+}
+
+function asOptionalNonNegativeNumber(value: unknown, fieldName: string, fallback = 0): number {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  if (typeof value !== 'number' || Number.isNaN(value) || value < 0) {
+    throw new ProdifyError(`Contract frontmatter field "${fieldName}" must be a non-negative number.`, {
+      code: 'CONTRACT_SCHEMA_INVALID'
+    });
+  }
+
+  return value;
+}
+
+function asOptionalBoolean(value: unknown, fieldName: string, fallback = false): boolean {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  if (typeof value !== 'boolean') {
+    throw new ProdifyError(`Contract frontmatter field "${fieldName}" must be a boolean.`, {
+      code: 'CONTRACT_SCHEMA_INVALID'
+    });
+  }
+
+  return value;
+}
+
 function asStage(value: unknown): FlowStage {
   const stage = asString(value, 'stage') as FlowStage;
   if (!CONTRACT_STAGE_NAMES.includes(stage)) {
@@ -136,6 +178,14 @@ export function normalizeSourceContractDocument(options: {
       : [],
     policy_rules: asStringArray(document.frontmatter.policy_rules, 'policy_rules'),
     success_criteria: asStringArray(document.frontmatter.success_criteria, 'success_criteria'),
-    skill_routing: normalizeStageSkillRouting(document.frontmatter.skill_routing)
+    skill_routing: normalizeStageSkillRouting(document.frontmatter.skill_routing),
+    diff_validation_rules: {
+      minimum_files_modified: asOptionalNonNegativeInteger(document.frontmatter.minimum_files_modified, 'minimum_files_modified'),
+      minimum_lines_changed: asOptionalNonNegativeInteger(document.frontmatter.minimum_lines_changed, 'minimum_lines_changed'),
+      must_create_files: asOptionalBoolean(document.frontmatter.must_create_files, 'must_create_files'),
+      required_structural_changes: asOptionalStringArray(document.frontmatter.required_structural_changes, 'required_structural_changes')
+    },
+    min_impact_score: asOptionalNonNegativeNumber(document.frontmatter.min_impact_score, 'min_impact_score'),
+    enforce_plan_units: asOptionalBoolean(document.frontmatter.enforce_plan_units, 'enforce_plan_units')
   };
 }

@@ -1,237 +1,87 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { inspectCompiledContracts } from '../contracts/freshness.js';
 import { ProdifyError } from '../core/errors.js';
-import { listFilesRecursive, pathExists, writeFileEnsuringDir } from '../core/fs.js';
+import { pathExists, writeFileEnsuringDir } from '../core/fs.js';
 import { resolveRepoPath } from '../core/paths.js';
-const SCORE_SCHEMA_VERSION = '1';
+import { calculateRepositoryQuality } from './scoring-engine.js';
+const SCORE_SCHEMA_VERSION = '2';
 function roundScore(value) {
     return Math.round(value * 100) / 100;
 }
-function createMetric(options) {
-    const ratio = Math.max(0, Math.min(1, options.ratio));
-    const points = roundScore(options.weight * ratio);
+function serializeJson(value) {
+    return `${JSON.stringify(value, null, 2)}\n`;
+}
+async function removeIfExists(targetPath) {
+    if (await pathExists(targetPath)) {
+        await fs.rm(targetPath);
+    }
+}
+function createMetric(label, points, maxPoints, details) {
+    const normalizedPoints = roundScore(points);
     return {
-        id: options.id,
-        label: options.label,
-        tool: options.tool,
-        weight: options.weight,
-        max_points: options.weight,
-        points,
-        status: ratio === 1 ? 'pass' : ratio === 0 ? 'fail' : 'partial',
-        details: options.details
+        id: label.toLowerCase().replace(/\s+/g, '-'),
+        label,
+        tool: 'scoring-engine',
+        weight: maxPoints,
+        max_points: maxPoints,
+        points: normalizedPoints,
+        status: normalizedPoints >= maxPoints ? 'pass' : normalizedPoints <= 0 ? 'fail' : 'partial',
+        details
     };
 }
-async function detectEcosystems(repoRoot) {
-    const ecosystems = [];
-    if (await pathExists(resolveRepoPath(repoRoot, 'package.json'))) {
-        ecosystems.push('typescript-javascript');
-    }
-    const repoFiles = await listFilesRecursive(repoRoot);
-    if (repoFiles.some((file) => file.relativePath.endsWith('.py'))) {
-        ecosystems.push('python');
-    }
-    if (repoFiles.some((file) => file.relativePath.endsWith('.cs') || file.relativePath.endsWith('.csproj') || file.relativePath.endsWith('.sln'))) {
-        ecosystems.push('csharp');
-    }
-    return ecosystems.sort((left, right) => left.localeCompare(right));
-}
-async function buildEcosystemMetrics(repoRoot, ecosystems) {
-    const metrics = [];
-    const toolOutputs = [];
-    if (ecosystems.includes('typescript-javascript')) {
-        const packageJsonPath = resolveRepoPath(repoRoot, 'package.json');
-        const tsconfigPath = resolveRepoPath(repoRoot, 'tsconfig.json');
-        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
-        const scripts = packageJson.scripts ?? {};
-        const hasBuild = typeof scripts.build === 'string' && scripts.build.length > 0;
-        const hasTest = typeof scripts.test === 'string' && scripts.test.length > 0;
-        const hasTsconfig = await pathExists(tsconfigPath);
-        const score = [hasBuild, hasTest, hasTsconfig].filter(Boolean).length / 3;
-        metrics.push(createMetric({
-            id: 'typescript-javascript',
-            label: 'TypeScript/JavaScript local tooling',
-            tool: 'package-json',
-            weight: 15,
-            ratio: score,
-            details: `build=${hasBuild}, test=${hasTest}, tsconfig=${hasTsconfig}`
-        }));
-        toolOutputs.push({
-            adapter: 'typescript-javascript',
-            details: {
-                build_script: hasBuild,
-                test_script: hasTest,
-                tsconfig: hasTsconfig
-            }
-        });
-    }
-    if (ecosystems.includes('python')) {
-        const hasPyproject = await pathExists(resolveRepoPath(repoRoot, 'pyproject.toml'));
-        const hasRequirements = await pathExists(resolveRepoPath(repoRoot, 'requirements.txt'));
-        const ratio = [hasPyproject, hasRequirements].filter(Boolean).length / 2;
-        metrics.push(createMetric({
-            id: 'python',
-            label: 'Python local tooling',
-            tool: 'filesystem',
-            weight: 7.5,
-            ratio,
-            details: `pyproject=${hasPyproject}, requirements=${hasRequirements}`
-        }));
-        toolOutputs.push({
-            adapter: 'python',
-            details: {
-                pyproject: hasPyproject,
-                requirements: hasRequirements
-            }
-        });
-    }
-    if (ecosystems.includes('csharp')) {
-        const repoFiles = await listFilesRecursive(repoRoot);
-        const hasSolution = repoFiles.some((file) => file.relativePath.endsWith('.sln'));
-        const hasProject = repoFiles.some((file) => file.relativePath.endsWith('.csproj'));
-        const ratio = [hasSolution, hasProject].filter(Boolean).length / 2;
-        metrics.push(createMetric({
-            id: 'csharp',
-            label: 'C# local tooling',
-            tool: 'filesystem',
-            weight: 7.5,
-            ratio,
-            details: `solution=${hasSolution}, project=${hasProject}`
-        }));
-        toolOutputs.push({
-            adapter: 'csharp',
-            details: {
-                solution: hasSolution,
-                project: hasProject
-            }
-        });
-    }
-    return {
-        metrics,
-        toolOutputs
-    };
-}
-async function buildRepoHygieneMetric(repoRoot) {
-    const requiredSignals = ['README.md', 'LICENSE', 'tests', '.prodify/contracts-src'];
-    const available = await Promise.all(requiredSignals.map((relativePath) => pathExists(resolveRepoPath(repoRoot, relativePath))));
-    const ratio = available.filter(Boolean).length / requiredSignals.length;
-    return {
-        metric: createMetric({
-            id: 'repo-hygiene',
-            label: 'Repository hygiene signals',
-            tool: 'filesystem',
-            weight: 20,
-            ratio,
-            details: requiredSignals.map((entry, index) => `${entry}=${available[index]}`).join(', ')
-        }),
-        toolOutput: {
-            adapter: 'filesystem',
-            details: Object.fromEntries(requiredSignals.map((entry, index) => [entry, available[index]]))
-        }
-    };
-}
-function buildRuntimeMetric(runtimeState) {
-    const healthyState = runtimeState.runtime.current_state !== 'failed' && runtimeState.runtime.current_state !== 'blocked';
-    const ratio = healthyState ? 1 : 0;
-    return {
-        metric: createMetric({
-            id: 'runtime-state',
-            label: 'Contract-driven runtime state',
-            tool: 'state-json',
-            weight: 25,
-            ratio,
-            details: `current_state=${runtimeState.runtime.current_state}, status=${runtimeState.runtime.status}`
-        }),
-        toolOutput: {
-            adapter: 'state-json',
-            details: {
-                current_state: runtimeState.runtime.current_state,
-                status: runtimeState.runtime.status,
-                last_validation_result: runtimeState.runtime.last_validation_result
-            }
-        }
-    };
-}
-function buildValidationMetric(runtimeState) {
-    const passed = runtimeState.runtime.last_validation?.passed === true;
-    const finalReady = runtimeState.runtime.current_state === 'validate_complete' || runtimeState.runtime.current_state === 'completed';
-    const ratio = passed ? (finalReady ? 1 : 0.5) : 0;
-    return {
-        metric: createMetric({
-            id: 'validation-gate',
-            label: 'Validated contract completion',
-            tool: 'state-json',
-            weight: 10,
-            ratio,
-            details: `passed=${passed}, final_ready=${finalReady}`
-        }),
-        toolOutput: {
-            adapter: 'validation-gate',
-            details: {
-                passed,
-                final_ready: finalReady
-            }
-        }
-    };
+function toSnapshotMetrics(score) {
+    return [
+        createMetric('Structure', score.breakdown.structure * (score.weights.structure / 100), score.weights.structure, `modules=${score.signals.module_count}, avg_directory_depth=${score.signals.average_directory_depth}`),
+        createMetric('Maintainability', score.breakdown.maintainability * (score.weights.maintainability / 100), score.weights.maintainability, `avg_function_length=${score.signals.average_function_length}`),
+        createMetric('Complexity', score.breakdown.complexity * (score.weights.complexity / 100), score.weights.complexity, `dependency_depth=${score.signals.dependency_depth}, avg_imports=${score.signals.average_imports_per_module}`),
+        createMetric('Testability', score.breakdown.testability * (score.weights.testability / 100), score.weights.testability, `test_file_ratio=${score.signals.test_file_ratio}`)
+    ];
 }
 export async function calculateLocalScore(repoRoot, { kind, runtimeState }) {
-    const contractInventory = await inspectCompiledContracts(repoRoot);
-    const ecosystems = await detectEcosystems(repoRoot);
-    const metrics = [];
-    const toolOutputs = [];
-    metrics.push(createMetric({
-        id: 'contracts',
-        label: 'Compiled contract health',
-        tool: 'contract-compiler',
-        weight: 30,
-        ratio: contractInventory.ok ? 1 : Math.max(0, 1 - ((contractInventory.missingCompiledStages.length + contractInventory.staleStages.length) / 6)),
-        details: `source=${contractInventory.sourceCount}, compiled=${contractInventory.compiledCount}, stale=${contractInventory.staleStages.length}, missing=${contractInventory.missingCompiledStages.length}`
-    }));
-    toolOutputs.push({
-        adapter: 'contract-compiler',
-        details: {
-            ok: contractInventory.ok,
-            sourceCount: contractInventory.sourceCount,
-            compiledCount: contractInventory.compiledCount,
-            staleStages: contractInventory.staleStages,
-            missingCompiledStages: contractInventory.missingCompiledStages,
-            missingSourceStages: contractInventory.missingSourceStages,
-            invalidStages: contractInventory.invalidStages
-        }
-    });
-    const runtimeMetric = buildRuntimeMetric(runtimeState);
-    metrics.push(runtimeMetric.metric);
-    toolOutputs.push(runtimeMetric.toolOutput);
-    const validationMetric = buildValidationMetric(runtimeState);
-    metrics.push(validationMetric.metric);
-    toolOutputs.push(validationMetric.toolOutput);
-    const hygieneMetric = await buildRepoHygieneMetric(repoRoot);
-    metrics.push(hygieneMetric.metric);
-    toolOutputs.push(hygieneMetric.toolOutput);
-    const ecosystemMetrics = await buildEcosystemMetrics(repoRoot, ecosystems);
-    metrics.push(...ecosystemMetrics.metrics);
-    toolOutputs.push(...ecosystemMetrics.toolOutputs);
-    const totalScore = roundScore(metrics.reduce((sum, metric) => sum + metric.points, 0));
-    const maxScore = roundScore(metrics.reduce((sum, metric) => sum + metric.max_points, 0));
     if (kind === 'final' && !(runtimeState.runtime.last_validation?.passed && (runtimeState.runtime.current_state === 'validate_complete' || runtimeState.runtime.current_state === 'completed'))) {
         throw new ProdifyError('Final scoring requires a validated runtime state at validate_complete or completed.', {
             code: 'SCORING_STATE_INVALID'
         });
     }
+    const quality = await calculateRepositoryQuality(repoRoot);
+    const snapshot = {
+        schema_version: SCORE_SCHEMA_VERSION,
+        kind,
+        ecosystems: ['repository'],
+        total_score: quality.total_score,
+        max_score: quality.max_score,
+        breakdown: quality.breakdown,
+        weights: quality.weights,
+        signals: quality.signals,
+        metrics: toSnapshotMetrics(quality)
+    };
     return {
-        snapshot: {
-            schema_version: SCORE_SCHEMA_VERSION,
-            kind,
-            ecosystems,
-            total_score: totalScore,
-            max_score: maxScore,
-            metrics
-        },
-        toolOutputs
+        snapshot,
+        toolOutputs: [{
+                adapter: 'scoring-engine',
+                details: {
+                    kind,
+                    breakdown: quality.breakdown,
+                    weights: quality.weights,
+                    signals: quality.signals
+                }
+            }]
     };
 }
-function serializeJson(value) {
-    return `${JSON.stringify(value, null, 2)}\n`;
+export async function calculateCurrentImpactDelta(repoRoot) {
+    const metricsDir = resolveRepoPath(repoRoot, '.prodify/metrics');
+    const baselinePath = path.join(metricsDir, 'baseline.score.json');
+    if (!(await pathExists(baselinePath))) {
+        return null;
+    }
+    const baseline = JSON.parse(await fs.readFile(baselinePath, 'utf8'));
+    const current = await calculateRepositoryQuality(repoRoot);
+    return {
+        schema_version: SCORE_SCHEMA_VERSION,
+        baseline_score: baseline.total_score,
+        final_score: current.total_score,
+        delta: roundScore(current.total_score - baseline.total_score)
+    };
 }
 export async function writeScoreSnapshot(repoRoot, { kind, runtimeState }) {
     const { snapshot, toolOutputs } = await calculateLocalScore(repoRoot, {
@@ -247,16 +97,47 @@ export async function writeScoreSnapshot(repoRoot, { kind, runtimeState }) {
     }));
     return snapshot;
 }
-export async function writeScoreDelta(repoRoot) {
+export async function writeScoreDelta(repoRoot, options = {}) {
     const metricsDir = resolveRepoPath(repoRoot, '.prodify/metrics');
     const baseline = JSON.parse(await fs.readFile(path.join(metricsDir, 'baseline.score.json'), 'utf8'));
     const final = JSON.parse(await fs.readFile(path.join(metricsDir, 'final.score.json'), 'utf8'));
+    const deltaValue = roundScore(final.total_score - baseline.total_score);
+    const threshold = options.minImpactScore;
     const delta = {
         schema_version: SCORE_SCHEMA_VERSION,
         baseline_score: baseline.total_score,
         final_score: final.total_score,
-        delta: roundScore(final.total_score - baseline.total_score)
+        delta: deltaValue,
+        ...(threshold !== undefined ? {
+            min_impact_score: threshold,
+            passed: deltaValue >= threshold
+        } : {})
     };
     await writeFileEnsuringDir(path.join(metricsDir, 'delta.json'), serializeJson(delta));
     return delta;
+}
+export async function readScoreDelta(repoRoot) {
+    const deltaPath = resolveRepoPath(repoRoot, '.prodify/metrics/delta.json');
+    if (!(await pathExists(deltaPath))) {
+        return null;
+    }
+    return JSON.parse(await fs.readFile(deltaPath, 'utf8'));
+}
+export async function syncScoreArtifactsForRuntimeState(repoRoot, runtimeState) {
+    if (runtimeState.runtime.current_state === 'bootstrapped' || runtimeState.runtime.current_state === 'understand_pending') {
+        await writeScoreSnapshot(repoRoot, {
+            kind: 'baseline',
+            runtimeState
+        });
+        await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.score.json'));
+        await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.tools.json'));
+        await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/delta.json'));
+    }
+    if (runtimeState.runtime.last_validation?.passed && (runtimeState.runtime.current_state === 'validate_complete' || runtimeState.runtime.current_state === 'completed')) {
+        await writeScoreSnapshot(repoRoot, {
+            kind: 'final',
+            runtimeState
+        });
+        await writeScoreDelta(repoRoot);
+    }
 }

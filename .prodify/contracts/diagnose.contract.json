@@ -38,5 +38,13 @@
     "default_skills": [],
     "allowed_skills": [],
     "conditional_skills": []
-  }
+  },
+  "diff_validation_rules": {
+    "minimum_files_modified": 0,
+    "minimum_lines_changed": 0,
+    "must_create_files": false,
+    "required_structural_changes": []
+  },
+  "min_impact_score": 0,
+  "enforce_plan_units": false
 }

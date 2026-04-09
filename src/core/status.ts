@@ -12,8 +12,10 @@ import { readRuntimeState, RUNTIME_STATUS } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
 import { buildBootstrapPrompt, hasManualBootstrapGuidance } from './prompt-builder.js';
 import { getRuntimeProfile } from './targets.js';
+import { readScoreDelta } from '../scoring/model.js';
 import type {
   RuntimeProfileName,
+  ScoreDelta,
   RuntimeStateBlock,
   StatusReport,
   VersionInspection,
@@ -164,6 +166,16 @@ function describeStageValidation(report: StatusReport): string {
     : `failed at ${runtime.last_validation.stage}`;
 }
 
+function describeImpactScore(scoreDelta: ScoreDelta | null): string {
+  if (!scoreDelta) {
+    return 'not available';
+  }
+
+  const threshold = scoreDelta.min_impact_score !== undefined ? `, threshold=${scoreDelta.min_impact_score}` : '';
+  const verdict = scoreDelta.passed === undefined ? '' : `, passed=${scoreDelta.passed}`;
+  return `${scoreDelta.baseline_score} -> ${scoreDelta.final_score} (delta ${scoreDelta.delta}${threshold}${verdict})`;
+}
+
 async function checkManualBootstrapGuidance(repoRoot: string): Promise<boolean> {
   const agentsPath = resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md');
   if (!(await pathExists(agentsPath))) {
@@ -264,6 +276,7 @@ export async function inspectRepositoryStatus(
       bootstrapProfile,
       bootstrapPrompt,
       stageSkillResolution: null,
+      scoreDelta: null,
       recommendedNextAction: 'prodify init',
       presetMetadata: preset.metadata
     };
@@ -281,6 +294,7 @@ export async function inspectRepositoryStatus(
   let runtimeState = null;
   let runtimeStateError = null;
   let stageSkillResolution = null;
+  let scoreDelta = null;
 
   try {
     runtimeState = await readRuntimeState(repoRoot, {
@@ -291,6 +305,7 @@ export async function inspectRepositoryStatus(
   }
 
   const manualBootstrapReady = await checkManualBootstrapGuidance(repoRoot);
+  scoreDelta = await readScoreDelta(repoRoot);
   const canonicalOk = missingPaths.length === 0;
   if (canonicalOk && contractInventory.ok) {
     const skillStage = runtimeState?.runtime.current_stage
@@ -328,6 +343,7 @@ export async function inspectRepositoryStatus(
     bootstrapProfile,
     bootstrapPrompt,
     stageSkillResolution,
+    scoreDelta,
     recommendedNextAction: deriveNextAction({
       initialized,
       canonicalOk,
@@ -357,6 +373,7 @@ export function renderStatusReport(report: StatusReport): string {
     `Skills active: ${describeActiveSkills(report)}`,
     `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
     `Stage validation: ${describeStageValidation(report)}`,
+    `Impact score: ${describeImpactScore(report.scoreDelta)}`,
     `Manual bootstrap: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/AGENTS.md guidance'}`,
     `Bootstrap profile: ${report.bootstrapProfile}`,
     `Bootstrap prompt: ${report.bootstrapPrompt}`,

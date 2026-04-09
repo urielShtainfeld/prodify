@@ -23,12 +23,14 @@ allowed_write_roots:
   - .prodify/metrics/
 forbidden_writes:
   - src/
+min_impact_score: 1
 policy_rules:
   - Validation must follow every refactor step.
   - Critical regressions block forward progress.
 success_criteria:
   - Validation records whether regressions were found.
   - The result is strong enough to gate the next runtime transition.
+  - The measured impact score exceeds the minimum threshold.
 skill_routing:
   default_skills:
     - test-hardening

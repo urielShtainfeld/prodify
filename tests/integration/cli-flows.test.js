@@ -91,6 +91,7 @@ test('status becomes the primary user-facing summary after init', async () => {
   assert.match(result.stdout, /Skills active: codebase-scanning/);
   assert.match(result.stdout, /Execution state: not bootstrapped/);
   assert.match(result.stdout, /Stage validation: not run yet/);
+  assert.match(result.stdout, /Impact score: not available/);
   assert.match(result.stdout, /Manual bootstrap: ready/);
   assert.match(result.stdout, /Bootstrap prompt: Read \.prodify\/AGENTS\.md/);
   assert.match(result.stdout, /Recommended next action: prodify setup-agent <agent>/);

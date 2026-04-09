@@ -17,10 +17,11 @@ test('global agent setup registers multiple agents without repo-local state', as
   const root = await createTempDir();
   const env = {
     ...process.env,
-    PRODIFY_HOME: path.join(root, '.prodify-home')
+    PRODIFY_HOME: path.join(root, '.prodify-home'),
+    CODEX_HOME: path.join(root, '.codex-home')
   };
 
-  await setupAgentIntegration('codex', {
+  const codexResult = await setupAgentIntegration('codex', {
     now: '2026-04-04T00:00:00.000Z',
     env
   });
@@ -34,7 +35,11 @@ test('global agent setup registers multiple agents without repo-local state', as
   });
 
   assert.deepEqual(listConfiguredAgents(state), ['claude', 'codex']);
+  assert.equal(codexResult.installedPaths.length, 3);
   await fs.access(resolveGlobalAgentSetupStatePath(env));
+  assert.match(await fs.readFile(path.join(root, '.codex-home', 'skills', 'prodify-init', 'SKILL.md'), 'utf8'), /\$prodify-init/);
+  assert.match(await fs.readFile(path.join(root, '.codex-home', 'skills', 'prodify-execute', 'SKILL.md'), 'utf8'), /\$prodify-execute/);
+  assert.match(await fs.readFile(path.join(root, '.codex-home', 'skills', 'prodify-resume', 'SKILL.md'), 'utf8'), /\$prodify-resume/);
   await assert.rejects(fs.access(path.join(root, '.prodify')));
 });
 
@@ -67,7 +72,8 @@ test('runtime agent binding rejects ambiguous or missing global setup', async ()
   const root = await createTempDir();
   const env = {
     ...process.env,
-    PRODIFY_HOME: path.join(root, '.prodify-home')
+    PRODIFY_HOME: path.join(root, '.prodify-home'),
+    CODEX_HOME: path.join(root, '.codex-home')
   };
 
   assert.deepEqual(listConfiguredAgents(createInitialGlobalAgentSetupState()), []);

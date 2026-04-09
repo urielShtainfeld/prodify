@@ -54,7 +54,7 @@ Use `$prodify-execute --auto` to continue without pausing between stages, or `$p
 5. Tell the agent to read `.prodify/AGENTS.md`.
 6. Run `$prodify-init`, then continue with `$prodify-execute` or `$prodify-execute --auto`.
 
-Prodify keeps repository initialization agent-agnostic. The active runtime is resolved when `$prodify-init` runs inside the opened agent, not when `prodify init` creates `.prodify/`.
+Repo initialization stays agent-agnostic. The active runtime is resolved when `$prodify-init` runs inside the opened agent, not when `prodify init` creates `.prodify/`.
 
 ## How It Works
 
@@ -106,7 +106,7 @@ Stage order:
 - Stage outputs live under `.prodify/artifacts/`.
 - Skill definitions live under `.prodify/skills/`.
 - Local baseline, final, and delta scoring artifacts live under `.prodify/metrics/`.
-- Fresh product users do not need root-level agent files.
+- No root-level agent files are required in the default product flow.
 
 ## Contracts And Validation
 
@@ -135,6 +135,8 @@ Prodify users and Prodify contributors follow different entrypoints:
 
 - Product users start from `.prodify/AGENTS.md` inside the repository they want to improve.
 - Contributors working on the Prodify source repository follow the root [AGENTS.md](/Users/urielsh/projects/prodify/AGENTS.md).
+
+In this repository, root `AGENTS.md` is repository-local contributor guidance. `.prodify/AGENTS.md` remains the runtime entrypoint for product users.
 
 For this self-hosting repository, the checked-in repo-root `.prodify/` directory is a development workspace for Prodify itself, not a byte-for-byte snapshot of fresh `prodify init` output.
 

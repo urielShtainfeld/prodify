@@ -19,7 +19,7 @@ export function renderHelp() {
         'Usage:',
         '  prodify setup-agent <codex|claude|copilot|opencode>',
         '  prodify init',
-        '  prodify status',
+        '  prodify status [--compact|--json|--verbose]',
         '  prodify doctor',
         '  prodify update',
         '',

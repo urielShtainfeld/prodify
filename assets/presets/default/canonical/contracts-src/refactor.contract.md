@@ -20,12 +20,19 @@ allowed_write_roots:
   - tests/
 forbidden_writes:
   - .prodify/contracts/
+minimum_files_modified: 1
+minimum_lines_changed: 10
+must_create_files: false
+required_structural_changes:
+  - module-boundary-created
+enforce_plan_units: true
 policy_rules:
   - Execute exactly one selected step.
   - Keep the diff minimal and behavior-preserving unless the plan says otherwise.
 success_criteria:
   - The selected plan step is implemented fully.
   - Unrelated files remain untouched.
+  - The refactor introduces measurable structural improvement.
 skill_routing:
   default_skills:
     - refactoring-method

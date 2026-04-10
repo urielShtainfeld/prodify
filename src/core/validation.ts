@@ -1,8 +1,11 @@
 import fs from 'node:fs/promises';
 
 import { loadCompiledContract } from '../contracts/compiler.js';
+import { diffAgainstRefactorBaseline } from './diff-validator.js';
 import { normalizeRepoRelativePath, resolveRepoPath } from './paths.js';
-import type { CompiledStageContract, FlowStage, ProdifyState, StageValidationResult, ValidationIssue } from '../types.js';
+import { readPlanUnits, readSelectedRefactorStep } from './plan-units.js';
+import { calculateCurrentImpactDelta } from '../scoring/model.js';
+import type { CompiledStageContract, DiffResult, FlowStage, ProdifyState, StageValidationResult, ValidationIssue } from '../types.js';
 
 function pathIsWithin(pathToCheck: string, root: string): boolean {
   const normalizedPath = normalizeRepoRelativePath(pathToCheck);
@@ -46,6 +49,14 @@ function buildRule(rule: string, message: string, path?: string): ValidationIssu
   return { rule, message, path };
 }
 
+function hasRequiredStructuralChanges(diffResult: DiffResult, requiredChanges: string[]): boolean {
+  if (requiredChanges.length === 0) {
+    return true;
+  }
+
+  return requiredChanges.every((requiredChange) => diffResult.structuralChanges.structural_change_flags.includes(requiredChange));
+}
+
 async function validateArtifact(
   repoRoot: string,
   contract: CompiledStageContract,
@@ -59,14 +70,6 @@ async function validateArtifact(
   try {
     const content = await fs.readFile(artifactPath, 'utf8');
     diagnostics.push(`validated artifact ${artifact.path}`);
-
-    if (!contract.allowed_write_roots.some((root) => pathIsWithin(artifact.path, root))) {
-      issues.push(buildRule(
-        'artifact/outside-allowed-roots',
-        `Required artifact ${artifact.path} is outside allowed write roots.`,
-        artifact.path
-      ));
-    }
 
     if (artifact.format === 'markdown') {
       const sections = collectMarkdownSections(content);
@@ -130,17 +133,23 @@ export async function validateStageOutputs(
   {
     contract,
     runtimeState,
-    touchedPaths = []
+    touchedPaths = [],
+    diffResult = null
   }: {
     contract: CompiledStageContract;
     runtimeState: ProdifyState;
     touchedPaths?: string[];
+    diffResult?: DiffResult | null;
   }
 ): Promise<StageValidationResult> {
   const violatedRules: ValidationIssue[] = [];
   const missingArtifacts: string[] = [];
   const diagnostics: string[] = [];
   const warnings: string[] = [];
+  const effectiveDiffResult = diffResult ?? await diffAgainstRefactorBaseline(repoRoot);
+  const impactDelta = contract.min_impact_score > 0
+    ? await calculateCurrentImpactDelta(repoRoot)
+    : null;
 
   if (runtimeState.runtime.current_stage !== contract.stage) {
     violatedRules.push(buildRule(
@@ -178,6 +187,110 @@ export async function validateStageOutputs(
     warnings.push('No touched paths were provided; forbidden-write checks are limited to required artifacts.');
   }
 
+  if (contract.enforce_plan_units) {
+    try {
+      const [planUnits, selectedStep] = await Promise.all([
+        readPlanUnits(repoRoot),
+        readSelectedRefactorStep(repoRoot)
+      ]);
+      if (!selectedStep) {
+        violatedRules.push(buildRule(
+          'plan/selected-step-missing',
+          'Refactor artifact does not declare the selected plan unit.'
+        ));
+      } else if (!planUnits.some((unit) => unit.id === selectedStep.id)) {
+        violatedRules.push(buildRule(
+          'plan/selected-step-invalid',
+          `Selected refactor step ${selectedStep.id} does not exist in 04-plan.md.`
+        ));
+      } else {
+        diagnostics.push(`validated selected plan unit ${selectedStep.id}`);
+      }
+    } catch {
+      violatedRules.push(buildRule(
+        'plan/unreadable',
+        'Plan-unit validation could not read 04-plan.md or 05-refactor.md.'
+      ));
+    }
+  }
+
+  if (effectiveDiffResult && (
+    contract.diff_validation_rules.minimum_files_modified > 0
+    || contract.diff_validation_rules.minimum_lines_changed > 0
+    || contract.diff_validation_rules.must_create_files
+    || contract.diff_validation_rules.required_structural_changes.length > 0
+  )) {
+    const changedFiles = effectiveDiffResult.filesModified + effectiveDiffResult.filesAdded + effectiveDiffResult.filesDeleted;
+    const changedLines = effectiveDiffResult.linesAdded + effectiveDiffResult.linesRemoved;
+    const formattingOnly = effectiveDiffResult.filesModified > 0
+      && effectiveDiffResult.filesModified === effectiveDiffResult.formattingOnlyPaths.length
+      && effectiveDiffResult.filesAdded === 0
+      && effectiveDiffResult.filesDeleted === 0;
+
+    if (changedFiles < contract.diff_validation_rules.minimum_files_modified) {
+      violatedRules.push(buildRule(
+        'diff/minimum-files-modified',
+        `Refactor changed ${changedFiles} files but requires at least ${contract.diff_validation_rules.minimum_files_modified}.`
+      ));
+    }
+
+    if (changedLines < contract.diff_validation_rules.minimum_lines_changed) {
+      violatedRules.push(buildRule(
+        'diff/minimum-lines-changed',
+        `Refactor changed ${changedLines} lines but requires at least ${contract.diff_validation_rules.minimum_lines_changed}.`
+      ));
+    }
+
+    if (contract.diff_validation_rules.must_create_files && effectiveDiffResult.filesAdded === 0) {
+      violatedRules.push(buildRule(
+        'diff/must-create-files',
+        'Refactor must create at least one new file.'
+      ));
+    }
+
+    if (formattingOnly) {
+      violatedRules.push(buildRule(
+        'diff/formatting-only',
+        'Refactor changes are formatting-only and do not count as meaningful code change.'
+      ));
+    }
+
+    if (!hasRequiredStructuralChanges(effectiveDiffResult, contract.diff_validation_rules.required_structural_changes)) {
+      violatedRules.push(buildRule(
+        'diff/required-structural-changes',
+        `Refactor is missing required structural changes: ${contract.diff_validation_rules.required_structural_changes.join(', ')}.`
+      ));
+    }
+
+    diagnostics.push(`validated diff: files=${changedFiles}, lines=${changedLines}, structural=${effectiveDiffResult.structuralChanges.structural_change_flags.join(',') || 'none'}`);
+  } else if (
+    contract.diff_validation_rules.minimum_files_modified > 0
+    || contract.diff_validation_rules.minimum_lines_changed > 0
+    || contract.diff_validation_rules.must_create_files
+    || contract.diff_validation_rules.required_structural_changes.length > 0
+  ) {
+    violatedRules.push(buildRule(
+      'diff/baseline-missing',
+      'Diff validation rules are configured but no refactor baseline snapshot was available.'
+    ));
+  }
+
+  if (contract.min_impact_score > 0) {
+    if (!impactDelta) {
+      violatedRules.push(buildRule(
+        'impact-score/missing-baseline',
+        'Impact score threshold is configured but no baseline score is available.'
+      ));
+    } else if (impactDelta.delta < contract.min_impact_score) {
+      violatedRules.push(buildRule(
+        'impact-score/minimum-threshold',
+        `Impact score delta ${impactDelta.delta} is below the required threshold ${contract.min_impact_score}.`
+      ));
+    } else {
+      diagnostics.push(`validated impact score delta ${impactDelta.delta}`);
+    }
+  }
+
   return {
     stage: contract.stage,
     contract_version: contract.contract_version,
@@ -185,7 +298,9 @@ export async function validateStageOutputs(
     violated_rules: violatedRules,
     missing_artifacts: [...new Set(missingArtifacts)].sort((left, right) => left.localeCompare(right)),
     warnings,
-    diagnostics
+    diagnostics,
+    ...(effectiveDiffResult ? { diff_result: effectiveDiffResult } : {}),
+    ...(impactDelta ? { impact_score_delta: impactDelta.delta } : {})
   };
 }
 
@@ -193,10 +308,12 @@ export async function validateStageOutputsForCurrentState(
   repoRoot: string,
   {
     runtimeState,
-    touchedPaths = []
+    touchedPaths = [],
+    diffResult = null
   }: {
     runtimeState: ProdifyState;
     touchedPaths?: string[];
+    diffResult?: DiffResult | null;
   }
 ): Promise<StageValidationResult> {
   const stage = runtimeState.runtime.current_stage;
@@ -208,7 +325,8 @@ export async function validateStageOutputsForCurrentState(
   return validateStageOutputs(repoRoot, {
     contract,
     runtimeState,
-    touchedPaths
+    touchedPaths,
+    diffResult
   });
 }
 
@@ -217,17 +335,20 @@ export async function validateStageOutputsForStage(
   {
     stage,
     runtimeState,
-    touchedPaths = []
+    touchedPaths = [],
+    diffResult = null
   }: {
     stage: FlowStage;
     runtimeState: ProdifyState;
     touchedPaths?: string[];
+    diffResult?: DiffResult | null;
   }
 ): Promise<StageValidationResult> {
   const contract = await loadCompiledContract(repoRoot, stage);
   return validateStageOutputs(repoRoot, {
     contract,
     runtimeState,
-    touchedPaths
+    touchedPaths,
+    diffResult
   });
 }

@@ -35,7 +35,7 @@ test('status reports an uninitialized repo cleanly', async () => {
 
   assert.equal(result.exitCode, 1);
   assert.match(result.stdout, /Repository: not initialized/);
-  assert.match(result.stdout, /Recommended next action: prodify init/);
+  assert.match(result.stdout, /Next action: prodify init/);
 });
 
 test('init creates only .prodify-owned runtime scaffolding', async () => {
@@ -46,12 +46,18 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Initialized Prodify/);
   assert.match(result.stdout, /prodify setup-agent <agent>/);
-  assert.match(result.stdout, /Manual bootstrap starts by telling your agent to read \.prodify\/AGENTS\.md/);
+  assert.match(result.stdout, /Default inside-agent bootstrap: open a configured agent in this repo and run `\$prodify-init`/);
+  assert.match(result.stdout, /Compact runtime bootstrap was generated under `\.prodify\/runtime\/bootstrap\.json`/);
   assert.match(result.stdout, /Compiled runtime contracts were generated under \.prodify\/contracts\//);
   await fs.access(path.join(repoRoot, '.prodify', 'state.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'bootstrap.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'current-stage.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'repo-context.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'skill-resolution', 'understand.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime-commands.md'));
   await fs.access(path.join(repoRoot, '.prodify', 'contracts-src', 'understand.contract.md'));
   await fs.access(path.join(repoRoot, '.prodify', 'contracts', 'understand.contract.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'contracts', 'manifest.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'artifacts', 'README.md'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'README.md'));
   await assertMissing(repoRoot, 'AGENTS.md');
@@ -78,22 +84,33 @@ test('status becomes the primary user-facing summary after init', async () => {
   await execCli(repoRoot, ['init']);
 
   const result = await execCli(repoRoot, ['status']);
+  const verbose = await execCli(repoRoot, ['status', '--verbose']);
 
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /Workspace health: healthy/);
-  assert.match(result.stdout, /Canonical files: healthy/);
-  assert.match(result.stdout, /Contract freshness: 6 compiled, synchronized/);
-  assert.match(result.stdout, /Version\/schema: current/);
-  assert.match(result.stdout, /Repo runtime binding: agent-agnostic/);
-  assert.match(result.stdout, /Global agent setup: none configured/);
-  assert.match(result.stdout, /Skill routing stage: understand/);
-  assert.match(result.stdout, /Skills considered: codebase-scanning/);
-  assert.match(result.stdout, /Skills active: codebase-scanning/);
-  assert.match(result.stdout, /Execution state: not bootstrapped/);
-  assert.match(result.stdout, /Stage validation: not run yet/);
-  assert.match(result.stdout, /Manual bootstrap: ready/);
-  assert.match(result.stdout, /Bootstrap prompt: Read \.prodify\/AGENTS\.md/);
-  assert.match(result.stdout, /Recommended next action: prodify setup-agent <agent>/);
+  assert.ok(result.stdout.length < verbose.stdout.length);
+  assert.match(result.stdout, /Health: healthy/);
+  assert.match(result.stdout, /Contracts: 6 compiled, synchronized/);
+  assert.match(result.stdout, /State: not bootstrapped/);
+  assert.match(result.stdout, /Impact: not available/);
+  assert.match(result.stdout, /Bootstrap: codex ready/);
+  assert.match(result.stdout, /Next action: prodify setup-agent <agent>/);
+
+  assert.equal(verbose.exitCode, 0);
+  assert.match(verbose.stdout, /Workspace health: healthy/);
+  assert.match(verbose.stdout, /Canonical files: healthy/);
+  assert.match(verbose.stdout, /Contract freshness: 6 compiled, synchronized/);
+  assert.match(verbose.stdout, /Version\/schema: current/);
+  assert.match(verbose.stdout, /Repo runtime binding: agent-agnostic/);
+  assert.match(verbose.stdout, /Global agent setup: none configured/);
+  assert.match(verbose.stdout, /Skill routing stage: understand/);
+  assert.match(verbose.stdout, /Skills considered: codebase-scanning/);
+  assert.match(verbose.stdout, /Skills active: codebase-scanning/);
+  assert.match(verbose.stdout, /Execution state: not bootstrapped/);
+  assert.match(verbose.stdout, /Stage validation: not run yet/);
+  assert.match(verbose.stdout, /Impact score: not available/);
+  assert.match(verbose.stdout, /Bootstrap runtime: ready/);
+  assert.match(verbose.stdout, /Bootstrap prompt: Open this repository in Codex and run `\$prodify-init`\./);
+  assert.match(verbose.stdout, /Recommended next action: prodify setup-agent <agent>/);
 });
 
 test('setup-agent configures a supported agent globally without repo-local writes', async () => {
@@ -121,7 +138,7 @@ test('multiple agents can be set up independently and status uses configured set
   await execCli(repoRoot, ['setup-agent', 'claude']);
   await execCli(repoRoot, ['init']);
 
-  const result = await execCli(repoRoot, ['status', '--agent', 'claude']);
+  const result = await execCli(repoRoot, ['status', '--verbose', '--agent', 'claude']);
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Global agent setup: claude, codex/);
@@ -203,8 +220,8 @@ test('source-only contract edits are detected until compiled contracts are refre
   const result = await execCli(repoRoot, ['status']);
 
   assert.equal(result.exitCode, 1);
-  assert.match(result.stdout, /Contract freshness: stale: understand/);
-  assert.match(result.stdout, /Recommended next action: prodify update/);
+  assert.match(result.stdout, /Contracts: stale: understand/);
+  assert.match(result.stdout, /Next action: prodify update/);
 });
 
 test('status reports malformed runtime state and recommends update', async () => {
@@ -216,7 +233,7 @@ test('status reports malformed runtime state and recommends update', async () =>
 
   assert.equal(result.exitCode, 1);
   assert.match(result.stdout, /Runtime state: Runtime state is malformed/);
-  assert.match(result.stdout, /Recommended next action: prodify update/);
+  assert.match(result.stdout, /Next action: prodify update/);
 });
 
 test('doctor fails clearly when .gitignore hides .prodify', async () => {
@@ -249,7 +266,7 @@ test('runtime bootstrap and resume readiness are reflected in status', async () 
   const running = startFlowExecution(bootstrapped);
   await writeRuntimeState(repoRoot, running);
 
-  const result = await execCli(repoRoot, ['status']);
+  const result = await execCli(repoRoot, ['status', '--verbose']);
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Workspace health: healthy/);
@@ -285,7 +302,7 @@ test('status distinguishes stage-validation failure from workspace health issues
   });
   await writeRuntimeState(repoRoot, failed);
 
-  const result = await execCli(repoRoot, ['status']);
+  const result = await execCli(repoRoot, ['status', '--verbose']);
 
   assert.equal(result.exitCode, 1);
   assert.match(result.stdout, /Workspace health: healthy/);
@@ -298,11 +315,11 @@ test('status can render a deterministic bootstrap prompt for a requested profile
   await execCli(repoRoot, ['setup-agent', 'claude']);
   await execCli(repoRoot, ['init']);
 
-  const result = await execCli(repoRoot, ['status', '--agent', 'claude']);
+  const result = await execCli(repoRoot, ['status', '--verbose', '--agent', 'claude']);
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Bootstrap profile: claude/);
-  assert.match(result.stdout, /Bootstrap prompt: Read \.prodify\/AGENTS\.md/);
+  assert.match(result.stdout, /Bootstrap prompt: Open this repository in Claude and run `\$prodify-init`\./);
 });
 
 test('canonical runtime instructions live inside .prodify guidance', async () => {
@@ -312,14 +329,33 @@ test('canonical runtime instructions live inside .prodify guidance', async () =>
   const guidance = await readRepoFile(repoRoot, '.prodify/AGENTS.md');
   const runtimeCommands = await readRepoFile(repoRoot, '.prodify/runtime-commands.md');
 
-  assert.match(guidance, /Read \.prodify\/AGENTS\.md and bootstrap Prodify/);
-  assert.match(guidance, /\.prodify\/contracts-src\//);
-  assert.match(guidance, /prodify setup-agent/);
+  assert.match(guidance, /Run `\$prodify-init`\./);
+  assert.match(guidance, /\.prodify\/runtime\/bootstrap\.json/);
   assert.match(guidance, /\$prodify-init/);
   assert.match(runtimeCommands, /\$prodify-execute/);
   assert.match(runtimeCommands, /prodify setup-agent/);
+  assert.match(runtimeCommands, /\.prodify\/runtime\/bootstrap\.json/);
   assert.match(runtimeCommands, /compiled-contract validation/i);
   assert.match(runtimeCommands, /\$prodify-resume/);
+});
+
+test('status --json exposes compact machine-readable runtime data', async () => {
+  const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['setup-agent', 'codex']);
+  await execCli(repoRoot, ['init']);
+
+  const result = await execCli(repoRoot, ['status', '--json']);
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(parsed.repository, 'initialized');
+  assert.equal(parsed.workspace_health, 'healthy');
+  assert.equal(parsed.contract_freshness, '6 compiled, synchronized');
+  assert.deepEqual(parsed.global_agent_setup, ['codex']);
+  assert.equal(parsed.bootstrap.profile, 'codex');
+  assert.equal(parsed.bootstrap.ready, true);
+  assert.match(parsed.bootstrap.prompt, /\$prodify-init/);
+  assert.equal(parsed.recommended_next_action, 'tell your agent: "Open this repository in Codex and run `$prodify-init`."');
 });
 
 test('no command path can create root-level legacy adapter files', async () => {
@@ -350,7 +386,8 @@ test('README and help output match the lifecycle model', async () => {
 
   assert.match(readme, /prodify setup-agent codex/);
   assert.match(readme, /prodify status/);
-  assert.match(readme, /read `\.prodify\/AGENTS\.md`/i);
+  assert.match(readme, /`\.prodify\/runtime\/bootstrap\.json`/);
+  assert.match(readme, /`\.prodify\/AGENTS\.md` is a compact human pointer/i);
   assert.match(readme, /`\.prodify\/skills\/`/);
   assert.match(readme, /No root-level agent files are required/i);
   assert.match(readme, /Repo initialization stays agent-agnostic/i);

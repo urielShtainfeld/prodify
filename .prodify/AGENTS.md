@@ -1,16 +1,14 @@
 # Prodify Agent Entry
 
-## First Message
+Run `$prodify-init`.
 
-When the user opens a coding agent manually, the first instruction should be:
-
-`Read .prodify/AGENTS.md and bootstrap Prodify for this repository.`
-
-After the agent reads this file, it should continue with `$prodify-init` and keep the full workflow anchored to `.prodify/`.
+That command should bootstrap Prodify from `.prodify/runtime/bootstrap.json` and keep the full workflow anchored to `.prodify/`.
 
 ## Core Rules
 
 - `.prodify/` is the only source of truth.
+- `.prodify/runtime/bootstrap.json` is the canonical machine-readable bootstrap source.
+- `.prodify/runtime/current-stage.json` is the compact machine-readable stage context pack.
 - Humans edit `.prodify/contracts-src/`; runtime reads only `.prodify/contracts/*.contract.json`.
 - No root-level `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `.opencode/AGENTS.md` is required for the main flow.
 - If this repository also contains a root `AGENTS.md`, treat it as repository-local contributor guidance unless explicitly documented otherwise.
@@ -32,6 +30,8 @@ After the agent reads this file, it should continue with `$prodify-init` and kee
 - `.prodify/AGENTS.md`
 - `.prodify/project.md`
 - `.prodify/planning.md`
+- `.prodify/runtime/bootstrap.json`
+- `.prodify/runtime/current-stage.json`
 - `.prodify/contracts-src/`
 - `.prodify/contracts/`
 - `.prodify/artifacts/`
@@ -54,3 +54,7 @@ Active stage outputs under `.prodify/artifacts/` use numbered filenames:
 - `$prodify-execute`
 - `$prodify-execute --auto`
 - `$prodify-resume`
+
+## Compatibility
+
+If the agent cannot use `$prodify-init` directly, treat this file as a human pointer and then load `.prodify/runtime/bootstrap.json`.

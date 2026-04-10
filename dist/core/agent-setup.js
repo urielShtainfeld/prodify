@@ -35,13 +35,18 @@ metadata:
 
 Use this runtime bridge to bootstrap Prodify inside the current repository.
 
-Load and follow, in this order:
-- \`.prodify/AGENTS.md\`
-- \`.prodify/runtime-commands.md\`
-- \`.prodify/state.json\`
+Bootstrap checklist:
+- locate the current repo root
+- verify \`.prodify/\` exists
+- read \`.prodify/runtime/bootstrap.json\` first
+- read \`.prodify/runtime/current-stage.json\` when present
+- detect or resolve the active agent runtime
+- read \`.prodify/state.json\`
 
+If \`.prodify/\` is missing, stop and tell the user to run \`prodify init\`.
+If \`.prodify/runtime/bootstrap.json\` is missing, malformed, or stale, stop and tell the user to run \`prodify update\`.
 Keep the runtime anchored to \`.prodify/\`.
-Do not substitute compatibility files for the canonical \`.prodify/AGENTS.md\` entrypoint.
+Treat \`.prodify/AGENTS.md\` as a compact human pointer only, not the canonical machine bootstrap source.
 
 Available runtime commands:
 - \`$prodify-init\`
@@ -70,9 +75,9 @@ metadata:
 Use this runtime bridge to execute the next Prodify workflow stage.
 
 Load and follow, in this order:
-- \`.prodify/runtime-commands.md\`
+- \`.prodify/runtime/bootstrap.json\`
+- \`.prodify/runtime/current-stage.json\`
 - \`.prodify/state.json\`
-- \`.prodify/AGENTS.md\`
 
 Interpret \`{{PRODIFY_EXECUTE_ARGS}}\` as the runtime command arguments.
 - empty: run \`$prodify-execute\`
@@ -99,9 +104,9 @@ metadata:
 Use this runtime bridge to resume Prodify from saved runtime state.
 
 Load and follow, in this order:
-- \`.prodify/runtime-commands.md\`
+- \`.prodify/runtime/bootstrap.json\`
+- \`.prodify/runtime/current-stage.json\`
 - \`.prodify/state.json\`
-- \`.prodify/AGENTS.md\`
 
 Resume from the current state recorded under \`.prodify/state.json\`.
 Preserve validation checkpoints and stop clearly if the state is corrupt or non-resumable.

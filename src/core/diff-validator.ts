@@ -1,0 +1,230 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+import { listFilesRecursive, pathExists, writeFileEnsuringDir } from './fs.js';
+import { normalizeRepoRelativePath, resolveRepoPath } from './paths.js';
+import type { DiffResult } from '../types.js';
+
+const DIFF_SNAPSHOT_SCHEMA_VERSION = '1';
+const BASELINE_SNAPSHOT_PATH = '.prodify/metrics/refactor-baseline.snapshot.json';
+const TRACKED_PREFIXES = ['src/', 'tests/', 'assets/'] as const;
+const TRACKED_FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.py', '.cs', '.css', '.scss', '.html']);
+const LAYER_DIRECTORY_NAMES = new Set(['application', 'domain', 'services', 'service', 'modules', 'module', 'adapters', 'infrastructure', 'core']);
+
+interface SnapshotFile {
+  path: string;
+  content: string;
+}
+
+interface RepoSnapshot {
+  schema_version: string;
+  files: SnapshotFile[];
+}
+
+function isTrackedPath(relativePath: string): boolean {
+  const normalized = normalizeRepoRelativePath(relativePath);
+  if (!TRACKED_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+    return false;
+  }
+
+  return TRACKED_FILE_EXTENSIONS.has(path.extname(normalized));
+}
+
+function normalizeWhitespace(content: string): string {
+  return content
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function toMap(snapshot: RepoSnapshot): Map<string, SnapshotFile> {
+  return new Map(snapshot.files.map((file) => [file.path, file]));
+}
+
+function diffLines(before: string, after: string): { added: number; removed: number } {
+  const beforeLines = before.replace(/\r\n/g, '\n').split('\n');
+  const afterLines = after.replace(/\r\n/g, '\n').split('\n');
+  const rows = beforeLines.length;
+  const cols = afterLines.length;
+  const dp = Array.from({ length: rows + 1 }, () => Array<number>(cols + 1).fill(0));
+
+  for (let row = rows - 1; row >= 0; row -= 1) {
+    for (let col = cols - 1; col >= 0; col -= 1) {
+      if (beforeLines[row] === afterLines[col]) {
+        dp[row][col] = dp[row + 1][col + 1] + 1;
+      } else {
+        dp[row][col] = Math.max(dp[row + 1][col], dp[row][col + 1]);
+      }
+    }
+  }
+
+  const common = dp[0][0];
+  return {
+    added: Math.max(0, afterLines.length - common),
+    removed: Math.max(0, beforeLines.length - common)
+  };
+}
+
+function collectDirectories(paths: string[]): string[] {
+  return [...new Set(paths
+    .map((relativePath) => path.posix.dirname(relativePath))
+    .filter((directory) => directory !== '.' && directory !== ''))]
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function detectStructuralChanges(options: {
+  addedPaths: string[];
+  modifiedPaths: string[];
+  beforeMap: Map<string, SnapshotFile>;
+  afterMap: Map<string, SnapshotFile>;
+  removedLineCounts: Map<string, number>;
+}): DiffResult['structuralChanges'] {
+  const newDirectories = collectDirectories(options.addedPaths);
+  const newLayers = newDirectories.filter((directory) => LAYER_DIRECTORY_NAMES.has(path.posix.basename(directory)));
+  const filesWithReducedResponsibility = options.modifiedPaths
+    .filter((relativePath) => (options.removedLineCounts.get(relativePath) ?? 0) > 0)
+    .sort((left, right) => left.localeCompare(right));
+  const newModules = options.addedPaths
+    .filter((relativePath) => relativePath.startsWith('src/'))
+    .sort((left, right) => left.localeCompare(right));
+
+  const flags = new Set<string>();
+  if (newDirectories.length > 0) {
+    flags.add('new-directories');
+  }
+  if (newLayers.length > 0) {
+    flags.add('new-layer-directories');
+    flags.add('module-boundary-created');
+  }
+  if (newModules.length > 0) {
+    flags.add('new-modules');
+    flags.add('module-boundary-created');
+  }
+  if (filesWithReducedResponsibility.length > 0) {
+    flags.add('responsibility-reduced');
+  }
+
+  return {
+    new_directories: newDirectories,
+    new_layer_directories: newLayers,
+    files_with_reduced_responsibility: filesWithReducedResponsibility,
+    new_modules: newModules,
+    structural_change_flags: [...flags].sort((left, right) => left.localeCompare(right))
+  };
+}
+
+function serializeSnapshot(snapshot: RepoSnapshot): string {
+  return `${JSON.stringify(snapshot, null, 2)}\n`;
+}
+
+export async function captureRepoSnapshot(repoRoot: string): Promise<RepoSnapshot> {
+  const repoFiles = await listFilesRecursive(repoRoot);
+  const files: SnapshotFile[] = [];
+
+  for (const file of repoFiles) {
+    if (!isTrackedPath(file.relativePath)) {
+      continue;
+    }
+
+    files.push({
+      path: normalizeRepoRelativePath(file.relativePath),
+      content: await fs.readFile(file.fullPath, 'utf8')
+    });
+  }
+
+  files.sort((left, right) => left.path.localeCompare(right.path));
+  return {
+    schema_version: DIFF_SNAPSHOT_SCHEMA_VERSION,
+    files
+  };
+}
+
+export async function writeRefactorBaselineSnapshot(repoRoot: string): Promise<RepoSnapshot> {
+  const snapshot = await captureRepoSnapshot(repoRoot);
+  await writeFileEnsuringDir(resolveRepoPath(repoRoot, BASELINE_SNAPSHOT_PATH), serializeSnapshot(snapshot));
+  return snapshot;
+}
+
+export async function readRefactorBaselineSnapshot(repoRoot: string): Promise<RepoSnapshot | null> {
+  const baselinePath = resolveRepoPath(repoRoot, BASELINE_SNAPSHOT_PATH);
+  if (!(await pathExists(baselinePath))) {
+    return null;
+  }
+
+  return JSON.parse(await fs.readFile(baselinePath, 'utf8')) as RepoSnapshot;
+}
+
+export function diffSnapshots(before: RepoSnapshot, after: RepoSnapshot): DiffResult {
+  const beforeMap = toMap(before);
+  const afterMap = toMap(after);
+  const allPaths = [...new Set([...beforeMap.keys(), ...afterMap.keys()])].sort((left, right) => left.localeCompare(right));
+  const modifiedPaths: string[] = [];
+  const addedPaths: string[] = [];
+  const deletedPaths: string[] = [];
+  const formattingOnlyPaths: string[] = [];
+  let linesAdded = 0;
+  let linesRemoved = 0;
+  const removedLineCounts = new Map<string, number>();
+
+  for (const relativePath of allPaths) {
+    const beforeFile = beforeMap.get(relativePath);
+    const afterFile = afterMap.get(relativePath);
+
+    if (!beforeFile && afterFile) {
+      addedPaths.push(relativePath);
+      linesAdded += afterFile.content.replace(/\r\n/g, '\n').split('\n').length;
+      continue;
+    }
+
+    if (beforeFile && !afterFile) {
+      deletedPaths.push(relativePath);
+      const removed = beforeFile.content.replace(/\r\n/g, '\n').split('\n').length;
+      linesRemoved += removed;
+      removedLineCounts.set(relativePath, removed);
+      continue;
+    }
+
+    if (!beforeFile || !afterFile || beforeFile.content === afterFile.content) {
+      continue;
+    }
+
+    modifiedPaths.push(relativePath);
+    if (normalizeWhitespace(beforeFile.content) === normalizeWhitespace(afterFile.content)) {
+      formattingOnlyPaths.push(relativePath);
+      continue;
+    }
+
+    const lineDiff = diffLines(beforeFile.content, afterFile.content);
+    linesAdded += lineDiff.added;
+    linesRemoved += lineDiff.removed;
+    removedLineCounts.set(relativePath, lineDiff.removed);
+  }
+
+  return {
+    filesModified: modifiedPaths.length,
+    filesAdded: addedPaths.length,
+    filesDeleted: deletedPaths.length,
+    linesAdded,
+    linesRemoved,
+    modifiedPaths,
+    addedPaths,
+    deletedPaths,
+    formattingOnlyPaths,
+    structuralChanges: detectStructuralChanges({
+      addedPaths,
+      modifiedPaths,
+      beforeMap,
+      afterMap,
+      removedLineCounts
+    })
+  };
+}
+
+export async function diffAgainstRefactorBaseline(repoRoot: string): Promise<DiffResult | null> {
+  const baseline = await readRefactorBaselineSnapshot(repoRoot);
+  if (!baseline) {
+    return null;
+  }
+
+  const current = await captureRepoSnapshot(repoRoot);
+  return diffSnapshots(baseline, current);
+}

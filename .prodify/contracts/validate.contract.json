@@ -4,7 +4,7 @@
   "stage": "validate",
   "task_id": "06-validate",
   "source_path": ".prodify/contracts-src/validate.contract.md",
-  "source_hash": "10c9f32b2bbed054884a3c9c5ad5f195954ca0c702f14a783835d79a07aca2ed",
+  "source_hash": "4e1d5d6b56b147cbd6e0c98d35604e04e96eae0c6ae38353b7181da5359b3469",
   "required_artifacts": [
     {
       "path": ".prodify/artifacts/06-validate.md",
@@ -41,6 +41,7 @@
     "Validation must follow every refactor step."
   ],
   "success_criteria": [
+    "The measured impact score exceeds the minimum threshold.",
     "The result is strong enough to gate the next runtime transition.",
     "Validation records whether regressions were found."
   ],
@@ -48,5 +49,13 @@
     "default_skills": [],
     "allowed_skills": [],
     "conditional_skills": []
-  }
+  },
+  "diff_validation_rules": {
+    "minimum_files_modified": 0,
+    "minimum_lines_changed": 0,
+    "must_create_files": false,
+    "required_structural_changes": []
+  },
+  "min_impact_score": 1,
+  "enforce_plan_units": false
 }

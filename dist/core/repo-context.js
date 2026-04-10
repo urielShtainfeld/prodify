@@ -1,8 +1,20 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
-import { listFilesRecursive, pathExists } from './fs.js';
+import { listFilesRecursive, pathExists, writeFileEnsuringDir } from './fs.js';
 import { resolveRepoPath } from './paths.js';
+const REPO_CONTEXT_CACHE_SCHEMA_VERSION = '1';
+const REPO_CONTEXT_CACHE_PATH = '.prodify/runtime/repo-context.json';
 function sortedUnique(values) {
     return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+function createHash(value) {
+    return crypto.createHash('sha256').update(value).digest('hex');
+}
+function serializeJson(value) {
+    return `${JSON.stringify(value, null, 2)}\n`;
+}
+function asRecord(value) {
+    return typeof value === 'object' && value !== null ? value : {};
 }
 async function readPackageJson(repoRoot) {
     const packageJsonPath = resolveRepoPath(repoRoot, 'package.json');
@@ -10,7 +22,11 @@ async function readPackageJson(repoRoot) {
         return null;
     }
     try {
-        return JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
+        const raw = await fs.readFile(packageJsonPath, 'utf8');
+        return {
+            raw,
+            parsed: JSON.parse(raw)
+        };
     }
     catch {
         return null;
@@ -31,11 +47,85 @@ function dependencyEntries(packageJson) {
     }
     return sortedUnique(names);
 }
-export async function detectRepoContext(repoRoot) {
+function normalizeRepoContext(raw) {
+    const record = asRecord(raw);
+    const normalizeList = (value) => Array.isArray(value)
+        ? value.filter((entry) => typeof entry === 'string').sort((left, right) => left.localeCompare(right))
+        : [];
+    const snapshot = {
+        languages: normalizeList(record.languages),
+        frameworks: normalizeList(record.frameworks),
+        project_types: normalizeList(record.project_types),
+        architecture_patterns: normalizeList(record.architecture_patterns),
+        risk_signals: normalizeList(record.risk_signals)
+    };
+    const hasContent = snapshot.languages.length > 0
+        || snapshot.frameworks.length > 0
+        || snapshot.project_types.length > 0
+        || snapshot.architecture_patterns.length > 0
+        || snapshot.risk_signals.length > 0;
+    return hasContent ? snapshot : {
+        languages: [],
+        frameworks: [],
+        project_types: [],
+        architecture_patterns: [],
+        risk_signals: []
+    };
+}
+async function buildRepoContextInputs(repoRoot) {
     const packageJson = await readPackageJson(repoRoot);
-    const dependencies = dependencyEntries(packageJson);
     const files = await listFilesRecursive(repoRoot);
-    const relativePaths = files.map((entry) => entry.relativePath.replaceAll('\\', '/'));
+    const relativePaths = files
+        .map((entry) => entry.relativePath.replaceAll('\\', '/'))
+        .filter((relativePath) => !relativePath.startsWith('.git/'))
+        .filter((relativePath) => !relativePath.startsWith('node_modules/'))
+        .filter((relativePath) => !relativePath.startsWith('.prodify/runtime/'))
+        .sort((left, right) => left.localeCompare(right));
+    const packageJsonRaw = packageJson?.raw ?? '';
+    const cacheKey = createHash(JSON.stringify({
+        packageJsonRaw,
+        relativePaths
+    }));
+    return {
+        packageJsonRaw,
+        relativePaths,
+        cacheKey
+    };
+}
+async function readCachedRepoContext(repoRoot, expectedCacheKey) {
+    const cachePath = resolveRepoPath(repoRoot, REPO_CONTEXT_CACHE_PATH);
+    if (!(await pathExists(cachePath))) {
+        return null;
+    }
+    try {
+        const raw = JSON.parse(await fs.readFile(cachePath, 'utf8'));
+        if (raw.schema_version !== REPO_CONTEXT_CACHE_SCHEMA_VERSION || raw.cache_key !== expectedCacheKey) {
+            return null;
+        }
+        return normalizeRepoContext(raw.context);
+    }
+    catch {
+        return null;
+    }
+}
+async function writeRepoContextCache(repoRoot, cacheKey, context) {
+    const cachePath = resolveRepoPath(repoRoot, REPO_CONTEXT_CACHE_PATH);
+    await writeFileEnsuringDir(cachePath, serializeJson({
+        schema_version: REPO_CONTEXT_CACHE_SCHEMA_VERSION,
+        cache_key: cacheKey,
+        context
+    }));
+}
+export async function detectRepoContext(repoRoot, options = {}) {
+    const { packageJsonRaw, relativePaths, cacheKey } = await buildRepoContextInputs(repoRoot);
+    if (!options.refresh) {
+        const cached = await readCachedRepoContext(repoRoot, cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+    const packageJson = packageJsonRaw ? JSON.parse(packageJsonRaw) : null;
+    const dependencies = dependencyEntries(packageJson);
     const hasTsConfig = relativePaths.includes('tsconfig.json');
     const hasTypeScriptSources = relativePaths.some((relativePath) => relativePath.endsWith('.ts') || relativePath.endsWith('.tsx'));
     const hasJavaScriptSources = relativePaths.some((relativePath) => relativePath.endsWith('.js') || relativePath.endsWith('.jsx'));
@@ -67,11 +157,13 @@ export async function detectRepoContext(repoRoot) {
         ...(hasCliEntrypoint ? ['cli-surface'] : []),
         ...(!hasTests ? ['missing-tests'] : [])
     ]);
-    return {
+    const snapshot = {
         languages,
         frameworks,
         project_types: projectTypes,
         architecture_patterns: architecturePatterns,
         risk_signals: riskSignals
     };
+    await writeRepoContextCache(repoRoot, cacheKey, snapshot);
+    return snapshot;
 }

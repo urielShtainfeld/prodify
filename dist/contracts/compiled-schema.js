@@ -15,6 +15,9 @@ export function validateCompiledContractShape(contract) {
         });
     }
     const record = contract;
+    const diffValidation = typeof record.diff_validation_rules === 'object' && record.diff_validation_rules !== null
+        ? record.diff_validation_rules
+        : {};
     return normalizeSourceContractDocument({
         document: {
             frontmatter: {
@@ -27,7 +30,13 @@ export function validateCompiledContractShape(contract) {
                 forbidden_writes: record.forbidden_writes,
                 policy_rules: record.policy_rules,
                 success_criteria: record.success_criteria,
-                skill_routing: record.skill_routing
+                skill_routing: record.skill_routing,
+                minimum_files_modified: diffValidation.minimum_files_modified ?? record.minimum_files_modified,
+                minimum_lines_changed: diffValidation.minimum_lines_changed ?? record.minimum_lines_changed,
+                must_create_files: diffValidation.must_create_files ?? record.must_create_files,
+                required_structural_changes: diffValidation.required_structural_changes ?? record.required_structural_changes,
+                min_impact_score: record.min_impact_score,
+                enforce_plan_units: record.enforce_plan_units
             },
             body: 'compiled-contract'
         },

@@ -119,6 +119,34 @@ export interface StageSkillRouting {
   conditional_skills: StageSkillRoutingRule[];
 }
 
+export interface DiffValidationRules {
+  minimum_files_modified: number;
+  minimum_lines_changed: number;
+  must_create_files: boolean;
+  required_structural_changes: string[];
+}
+
+export interface StructuralChangeSummary {
+  new_directories: string[];
+  new_layer_directories: string[];
+  files_with_reduced_responsibility: string[];
+  new_modules: string[];
+  structural_change_flags: string[];
+}
+
+export interface DiffResult {
+  filesModified: number;
+  filesAdded: number;
+  filesDeleted: number;
+  linesAdded: number;
+  linesRemoved: number;
+  modifiedPaths: string[];
+  addedPaths: string[];
+  deletedPaths: string[];
+  formattingOnlyPaths: string[];
+  structuralChanges: StructuralChangeSummary;
+}
+
 export interface CompiledStageContract {
   schema_version: string;
   contract_version: string;
@@ -132,6 +160,9 @@ export interface CompiledStageContract {
   policy_rules: string[];
   success_criteria: string[];
   skill_routing: StageSkillRouting;
+  diff_validation_rules: DiffValidationRules;
+  min_impact_score: number;
+  enforce_plan_units: boolean;
 }
 
 export interface ContractSourceDocument {
@@ -163,6 +194,8 @@ export interface StageValidationResult {
   missing_artifacts: string[];
   warnings: string[];
   diagnostics: string[];
+  diff_result?: DiffResult;
+  impact_score_delta?: number;
 }
 
 export interface RuntimeFailureMetadata {
@@ -265,6 +298,7 @@ export interface StatusReport {
   bootstrapProfile: RuntimeProfileName;
   bootstrapPrompt: string;
   stageSkillResolution: StageSkillResolution | null;
+  scoreDelta: ScoreDelta | null;
   recommendedNextAction: string;
   presetMetadata: VersionMetadata;
 }
@@ -300,12 +334,31 @@ export interface ScoreMetric {
   details: string;
 }
 
+export interface ScoreBreakdown {
+  structure: number;
+  maintainability: number;
+  complexity: number;
+  testability: number;
+}
+
+export interface ScoreSignals {
+  average_function_length: number;
+  module_count: number;
+  average_directory_depth: number;
+  dependency_depth: number;
+  average_imports_per_module: number;
+  test_file_ratio: number;
+}
+
 export interface ScoreSnapshot {
   schema_version: string;
   kind: ScoreSnapshotKind;
   ecosystems: string[];
   total_score: number;
   max_score: number;
+  breakdown: ScoreBreakdown;
+  weights: ScoreBreakdown;
+  signals: ScoreSignals;
   metrics: ScoreMetric[];
 }
 
@@ -314,6 +367,8 @@ export interface ScoreDelta {
   baseline_score: number;
   final_score: number;
   delta: number;
+  min_impact_score?: number;
+  passed?: boolean;
 }
 
 export interface AgentSetupRecord {

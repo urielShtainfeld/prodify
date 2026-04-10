@@ -3,15 +3,17 @@
 Run these commands inside your coding agent after `prodify init`.
 If this machine has not been prepared for that agent yet, run `prodify setup-agent <agent>` outside the repo first.
 
-## Manual Bootstrap
+## Default Bootstrap
 
-- First tell the agent: `Read .prodify/AGENTS.md and bootstrap Prodify for this repository.`
-- Keep the run anchored to `.prodify/AGENTS.md`, `.prodify/project.md`, `.prodify/planning.md`, `.prodify/contracts-src/`, `.prodify/contracts/`, `.prodify/skills/`, `.prodify/artifacts/`, `.prodify/metrics/`, `.prodify/tasks/`, and `.prodify/state.json`.
+- Run `$prodify-init`.
+- `$prodify-init` should read `.prodify/runtime/bootstrap.json` first, then `.prodify/runtime/current-stage.json`, then `.prodify/state.json`.
+- `.prodify/AGENTS.md` is a compact human pointer, not the canonical machine bootstrap source.
 
 ## Commands
 
 - `$prodify-init`
-  - inspect `.prodify/`
+  - locate the repo root and `.prodify/`
+  - read `.prodify/runtime/bootstrap.json`
   - detect or resolve the active agent/runtime mode
   - initialize `.prodify/state.json`
   - prepare the bootstrapped state and the `understand` contract without locking the repo to one agent
@@ -52,6 +54,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
 
 - Source contracts live under `.prodify/contracts-src/*.contract.md`.
 - Runtime execution reads only `.prodify/contracts/*.contract.json`.
+- Contract freshness metadata is cached under `.prodify/contracts/manifest.json`.
 - Skill definitions live under `.prodify/skills/*.json`.
 - Stage skill routing can activate bounded skills per stage, but contracts and validators remain authoritative.
 - Stage completion is gated by compiled-contract validation, not by agent assertion alone.

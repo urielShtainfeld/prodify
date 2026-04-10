@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { writeFileEnsuringDir } from './fs.js';
 import { USER_OWNED_CANONICAL_PATHS, USER_OWNED_CANONICAL_PREFIXES, resolveRepoPath } from './paths.js';
 import { loadDefaultPreset } from '../presets/loader.js';
-import { readRuntimeState, createInitialRuntimeState, normalizeRuntimeState, serializeRuntimeState } from './state.js';
+import { readRuntimeState, createInitialRuntimeState, normalizeRuntimeState, writeRuntimeState } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
 import { synchronizeRuntimeContracts } from '../contracts/compiler.js';
 import type { UpdateSummary } from '../types.js';
@@ -13,6 +13,7 @@ export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummar
   const versionStatus = await inspectVersionStatus(repoRoot, preset.metadata);
   const writtenCanonical: string[] = [];
   const preservedCanonical: string[] = [];
+  let nextRuntimeState = null;
 
   for (const entry of preset.entries) {
     const targetPath = resolveRepoPath(repoRoot, entry.relativePath);
@@ -30,22 +31,18 @@ export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummar
     }
 
     if (entry.relativePath === '.prodify/state.json') {
-      let nextState;
-
       try {
         const existingState = await readRuntimeState(repoRoot, {
           presetMetadata: preset.metadata
         });
-        nextState = normalizeRuntimeState(existingState, {
+        nextRuntimeState = normalizeRuntimeState(existingState, {
           presetMetadata: preset.metadata
         });
       } catch {
-        nextState = createInitialRuntimeState({
+        nextRuntimeState = createInitialRuntimeState({
           presetMetadata: preset.metadata
         });
       }
-
-      await writeFileEnsuringDir(targetPath, serializeRuntimeState(nextState));
       writtenCanonical.push(entry.relativePath);
       continue;
     }
@@ -55,6 +52,9 @@ export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummar
   }
 
   const compiledContracts = await synchronizeRuntimeContracts(repoRoot);
+  await writeRuntimeState(repoRoot, nextRuntimeState ?? createInitialRuntimeState({
+    presetMetadata: preset.metadata
+  }));
 
   return {
     versionStatus: versionStatus.status,

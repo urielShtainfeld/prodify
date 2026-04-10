@@ -4,7 +4,7 @@
   "stage": "refactor",
   "task_id": "05-refactor",
   "source_path": ".prodify/contracts-src/refactor.contract.md",
-  "source_hash": "0445b0239d888c292430f8fe5ddba557813f0e19a6bafdb9c7a7ad7d10c627b1",
+  "source_hash": "3e752b6d837af065cd8eb623a2cfdd3aa3eaf48e71ed4e4513058af2e8f86f81",
   "required_artifacts": [
     {
       "path": ".prodify/artifacts/05-refactor.md",
@@ -34,6 +34,7 @@
     "Keep the diff minimal and behavior-preserving unless the plan says otherwise."
   ],
   "success_criteria": [
+    "The refactor introduces measurable structural improvement.",
     "The selected plan step is implemented fully.",
     "Unrelated files remain untouched."
   ],
@@ -41,5 +42,15 @@
     "default_skills": [],
     "allowed_skills": [],
     "conditional_skills": []
-  }
+  },
+  "diff_validation_rules": {
+    "minimum_files_modified": 1,
+    "minimum_lines_changed": 10,
+    "must_create_files": false,
+    "required_structural_changes": [
+      "module-boundary-created"
+    ]
+  },
+  "min_impact_score": 0,
+  "enforce_plan_units": true
 }

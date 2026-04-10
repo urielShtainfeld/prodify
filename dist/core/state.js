@@ -2,6 +2,9 @@ import fs from 'node:fs/promises';
 import { ProdifyError } from './errors.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { resolveCanonicalPath } from './paths.js';
+import { writeRefactorBaselineSnapshot } from './diff-validator.js';
+import { syncRuntimeMetadata } from './runtime-metadata.js';
+import { syncScoreArtifactsForRuntimeState } from '../scoring/model.js';
 export const RUNTIME_STATE_SCHEMA_VERSION = '2';
 export const RUNTIME_STATUS = {
     NOT_BOOTSTRAPPED: 'not_bootstrapped',
@@ -217,4 +220,9 @@ export async function readRuntimeState(repoRoot, { allowMissing = false, presetM
 export async function writeRuntimeState(repoRoot, state) {
     const statePath = resolveCanonicalPath(repoRoot, '.prodify/state.json');
     await writeFileEnsuringDir(statePath, serializeRuntimeState(state));
+    if (state.runtime.current_state === 'refactor_pending') {
+        await writeRefactorBaselineSnapshot(repoRoot);
+    }
+    await syncScoreArtifactsForRuntimeState(repoRoot, state);
+    await syncRuntimeMetadata(repoRoot, state);
 }

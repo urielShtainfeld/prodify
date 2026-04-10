@@ -25,7 +25,35 @@ function cloneState(state) {
                     violated_rules: [...state.runtime.last_validation.violated_rules],
                     missing_artifacts: [...state.runtime.last_validation.missing_artifacts],
                     warnings: [...state.runtime.last_validation.warnings],
-                    diagnostics: [...state.runtime.last_validation.diagnostics]
+                    diagnostics: [...state.runtime.last_validation.diagnostics],
+                    ...(state.runtime.last_validation.diff_result ? {
+                        diff_result: {
+                            ...state.runtime.last_validation.diff_result,
+                            modifiedPaths: [...state.runtime.last_validation.diff_result.modifiedPaths],
+                            addedPaths: [...state.runtime.last_validation.diff_result.addedPaths],
+                            deletedPaths: [...state.runtime.last_validation.diff_result.deletedPaths],
+                            formattingOnlyPaths: [...state.runtime.last_validation.diff_result.formattingOnlyPaths],
+                            commentOnlyPaths: [...state.runtime.last_validation.diff_result.commentOnlyPaths],
+                            structuralChanges: {
+                                ...state.runtime.last_validation.diff_result.structuralChanges,
+                                new_directories: [...state.runtime.last_validation.diff_result.structuralChanges.new_directories],
+                                new_layer_directories: [...state.runtime.last_validation.diff_result.structuralChanges.new_layer_directories],
+                                files_with_reduced_responsibility: [...state.runtime.last_validation.diff_result.structuralChanges.files_with_reduced_responsibility],
+                                new_modules: [...state.runtime.last_validation.diff_result.structuralChanges.new_modules],
+                                structural_change_flags: [...state.runtime.last_validation.diff_result.structuralChanges.structural_change_flags]
+                            }
+                        }
+                    } : {}),
+                    ...(state.runtime.last_validation.refactor_impact_report ? {
+                        refactor_impact_report: {
+                            ...state.runtime.last_validation.refactor_impact_report,
+                            cosmetic_only_paths: [...state.runtime.last_validation.refactor_impact_report.cosmetic_only_paths],
+                            hotspots_touched: [...state.runtime.last_validation.refactor_impact_report.hotspots_touched],
+                            hotspot_improvements: state.runtime.last_validation.refactor_impact_report.hotspot_improvements
+                                .map((entry) => ({ ...entry })),
+                            structural_changes: [...state.runtime.last_validation.refactor_impact_report.structural_changes]
+                        }
+                    } : {})
                 }
                 : null,
             failure_metadata: state.runtime.failure_metadata

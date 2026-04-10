@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 
 import { loadCompiledContract } from '../contracts/compiler.js';
-import { diffAgainstRefactorBaseline } from './diff-validator.js';
+import { diffAgainstRefactorBaseline, readRefactorBaselineSnapshot } from './diff-validator.js';
+import { detectHotspots, detectHotspotsFromSnapshot, evaluateHotspotImprovements } from './hotspots.js';
 import { normalizeRepoRelativePath, resolveRepoPath } from './paths.js';
 import { readPlanUnits, readSelectedRefactorStep } from './plan-units.js';
 import { calculateCurrentImpactDelta } from '../scoring/model.js';
@@ -55,6 +56,14 @@ function hasRequiredStructuralChanges(diffResult: DiffResult, requiredChanges: s
   }
 
   return requiredChanges.every((requiredChange) => diffResult.structuralChanges.structural_change_flags.includes(requiredChange));
+}
+
+function touchedRepoPaths(diffResult: DiffResult): string[] {
+  return [...new Set([
+    ...diffResult.modifiedPaths,
+    ...diffResult.addedPaths,
+    ...diffResult.deletedPaths
+  ])].sort((left, right) => left.localeCompare(right));
 }
 
 async function validateArtifact(
@@ -146,10 +155,14 @@ export async function validateStageOutputs(
   const missingArtifacts: string[] = [];
   const diagnostics: string[] = [];
   const warnings: string[] = [];
+  let refactorImpactReport: StageValidationResult['refactor_impact_report'] | undefined;
   const effectiveDiffResult = diffResult ?? await diffAgainstRefactorBaseline(repoRoot);
   const impactDelta = contract.min_impact_score > 0
     ? await calculateCurrentImpactDelta(repoRoot)
     : null;
+  const baselineSnapshot = await readRefactorBaselineSnapshot(repoRoot);
+  const hotspots = baselineSnapshot ? detectHotspotsFromSnapshot(baselineSnapshot) : await detectHotspots(repoRoot);
+  const currentHotspots = await detectHotspots(repoRoot);
 
   if (runtimeState.runtime.current_stage !== contract.stage) {
     violatedRules.push(buildRule(
@@ -217,15 +230,35 @@ export async function validateStageOutputs(
   if (effectiveDiffResult && (
     contract.diff_validation_rules.minimum_files_modified > 0
     || contract.diff_validation_rules.minimum_lines_changed > 0
+    || contract.diff_validation_rules.minimum_non_formatting_lines_changed > 0
     || contract.diff_validation_rules.must_create_files
+    || contract.diff_validation_rules.forbid_cosmetic_only_changes
+    || contract.diff_validation_rules.minimum_hotspots_touched > 0
     || contract.diff_validation_rules.required_structural_changes.length > 0
   )) {
     const changedFiles = effectiveDiffResult.filesModified + effectiveDiffResult.filesAdded + effectiveDiffResult.filesDeleted;
     const changedLines = effectiveDiffResult.linesAdded + effectiveDiffResult.linesRemoved;
+    const nonFormattingLines = effectiveDiffResult.nonFormattingLinesAdded + effectiveDiffResult.nonFormattingLinesRemoved;
     const formattingOnly = effectiveDiffResult.filesModified > 0
       && effectiveDiffResult.filesModified === effectiveDiffResult.formattingOnlyPaths.length
       && effectiveDiffResult.filesAdded === 0
       && effectiveDiffResult.filesDeleted === 0;
+    const commentOnly = effectiveDiffResult.filesModified > 0
+      && effectiveDiffResult.filesModified === effectiveDiffResult.commentOnlyPaths.length
+      && effectiveDiffResult.filesAdded === 0
+      && effectiveDiffResult.filesDeleted === 0;
+    const cosmeticOnlyPaths = [...new Set([
+      ...effectiveDiffResult.formattingOnlyPaths,
+      ...effectiveDiffResult.commentOnlyPaths
+    ])].sort((left, right) => left.localeCompare(right));
+    const hotspotPathsTouched = hotspots
+      .map((hotspot) => hotspot.path)
+      .filter((hotspotPath) => touchedPaths.map((entry) => normalizeRepoRelativePath(entry)).includes(hotspotPath));
+    const hotspotImprovements = await evaluateHotspotImprovements(repoRoot, {
+      before: hotspots,
+      after: currentHotspots,
+      touchedPaths: touchedRepoPaths(effectiveDiffResult)
+    });
 
     if (changedFiles < contract.diff_validation_rules.minimum_files_modified) {
       violatedRules.push(buildRule(
@@ -238,6 +271,13 @@ export async function validateStageOutputs(
       violatedRules.push(buildRule(
         'diff/minimum-lines-changed',
         `Refactor changed ${changedLines} lines but requires at least ${contract.diff_validation_rules.minimum_lines_changed}.`
+      ));
+    }
+
+    if (nonFormattingLines < contract.diff_validation_rules.minimum_non_formatting_lines_changed) {
+      violatedRules.push(buildRule(
+        'diff/minimum-non-formatting-lines-changed',
+        `Refactor changed ${nonFormattingLines} non-formatting lines but requires at least ${contract.diff_validation_rules.minimum_non_formatting_lines_changed}.`
       ));
     }
 
@@ -255,6 +295,27 @@ export async function validateStageOutputs(
       ));
     }
 
+    if (commentOnly) {
+      violatedRules.push(buildRule(
+        'diff/comment-only',
+        'Refactor changes are comment-only and do not count as meaningful code change.'
+      ));
+    }
+
+    if (contract.diff_validation_rules.forbid_cosmetic_only_changes && cosmeticOnlyPaths.length === changedFiles && changedFiles > 0) {
+      violatedRules.push(buildRule(
+        'diff/cosmetic-only',
+        'Refactor changes are cosmetic-only and do not count as substantive repository change.'
+      ));
+    }
+
+    if (hotspots.length > 0 && hotspotPathsTouched.length < contract.diff_validation_rules.minimum_hotspots_touched) {
+      violatedRules.push(buildRule(
+        'hotspots/minimum-targets',
+        `Refactor touched ${hotspotPathsTouched.length} hotspot files but requires at least ${contract.diff_validation_rules.minimum_hotspots_touched}.`
+      ));
+    }
+
     if (!hasRequiredStructuralChanges(effectiveDiffResult, contract.diff_validation_rules.required_structural_changes)) {
       violatedRules.push(buildRule(
         'diff/required-structural-changes',
@@ -262,11 +323,24 @@ export async function validateStageOutputs(
       ));
     }
 
-    diagnostics.push(`validated diff: files=${changedFiles}, lines=${changedLines}, structural=${effectiveDiffResult.structuralChanges.structural_change_flags.join(',') || 'none'}`);
+    diagnostics.push(`validated diff: files=${changedFiles}, lines=${changedLines}, non_formatting=${nonFormattingLines}, structural=${effectiveDiffResult.structuralChanges.structural_change_flags.join(',') || 'none'}, hotspots=${hotspotPathsTouched.join(',') || 'none'}`);
+    const selectedPlanUnit = contract.enforce_plan_units ? await readSelectedRefactorStep(repoRoot) : null;
+    refactorImpactReport = {
+      changed_files: changedFiles,
+      non_formatting_lines_changed: nonFormattingLines,
+      cosmetic_only_paths: cosmeticOnlyPaths,
+      hotspots_touched: hotspotPathsTouched,
+      hotspot_improvements: hotspotImprovements,
+      structural_changes: effectiveDiffResult.structuralChanges.structural_change_flags,
+      selected_plan_unit: selectedPlanUnit?.id ?? null
+    };
   } else if (
     contract.diff_validation_rules.minimum_files_modified > 0
     || contract.diff_validation_rules.minimum_lines_changed > 0
+    || contract.diff_validation_rules.minimum_non_formatting_lines_changed > 0
     || contract.diff_validation_rules.must_create_files
+    || contract.diff_validation_rules.forbid_cosmetic_only_changes
+    || contract.diff_validation_rules.minimum_hotspots_touched > 0
     || contract.diff_validation_rules.required_structural_changes.length > 0
   ) {
     violatedRules.push(buildRule(
@@ -291,6 +365,26 @@ export async function validateStageOutputs(
     }
   }
 
+  if (impactDelta) {
+    for (const [category, minimumDelta] of Object.entries(contract.minimum_breakdown_deltas)) {
+      const key = category as keyof typeof impactDelta.breakdown_delta;
+      const actualDelta = impactDelta.breakdown_delta[key];
+      if (actualDelta < (minimumDelta ?? 0)) {
+        violatedRules.push(buildRule(
+          'impact-score/minimum-breakdown-threshold',
+          `Impact score breakdown delta for ${key} is ${actualDelta} but requires at least ${minimumDelta}.`
+        ));
+      }
+    }
+
+    if (impactDelta.regressed_categories.some((category) => impactDelta.breakdown_delta[category] < (-1 * contract.maximum_negative_breakdown_delta))) {
+      violatedRules.push(buildRule(
+        'impact-score/breakdown-regression',
+        `Impact score regressed beyond the allowed threshold in: ${impactDelta.regressed_categories.join(', ')}.`
+      ));
+    }
+  }
+
   return {
     stage: contract.stage,
     contract_version: contract.contract_version,
@@ -300,7 +394,8 @@ export async function validateStageOutputs(
     warnings,
     diagnostics,
     ...(effectiveDiffResult ? { diff_result: effectiveDiffResult } : {}),
-    ...(impactDelta ? { impact_score_delta: impactDelta.delta } : {})
+    ...(impactDelta ? { impact_score_delta: impactDelta.delta } : {}),
+    ...(refactorImpactReport ? { refactor_impact_report: refactorImpactReport } : {})
   };
 }
 

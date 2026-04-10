@@ -139,7 +139,12 @@ function normalizeValidation(value: unknown): StageValidationResult | null {
       : [],
     diagnostics: Array.isArray(record.diagnostics)
       ? record.diagnostics.filter((entry): entry is string => typeof entry === 'string')
-      : []
+      : [],
+    ...(typeof record.impact_score_delta === 'number' ? { impact_score_delta: record.impact_score_delta } : {}),
+    ...(typeof record.diff_result === 'object' && record.diff_result !== null ? { diff_result: record.diff_result as StageValidationResult['diff_result'] } : {}),
+    ...(typeof record.refactor_impact_report === 'object' && record.refactor_impact_report !== null
+      ? { refactor_impact_report: record.refactor_impact_report as StageValidationResult['refactor_impact_report'] }
+      : {})
   };
 }
 

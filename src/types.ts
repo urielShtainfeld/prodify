@@ -122,7 +122,10 @@ export interface StageSkillRouting {
 export interface DiffValidationRules {
   minimum_files_modified: number;
   minimum_lines_changed: number;
+  minimum_non_formatting_lines_changed: number;
   must_create_files: boolean;
+  forbid_cosmetic_only_changes: boolean;
+  minimum_hotspots_touched: number;
   required_structural_changes: string[];
 }
 
@@ -140,11 +143,41 @@ export interface DiffResult {
   filesDeleted: number;
   linesAdded: number;
   linesRemoved: number;
+  nonFormattingLinesAdded: number;
+  nonFormattingLinesRemoved: number;
   modifiedPaths: string[];
   addedPaths: string[];
   deletedPaths: string[];
   formattingOnlyPaths: string[];
+  commentOnlyPaths: string[];
   structuralChanges: StructuralChangeSummary;
+}
+
+export interface HotspotRecord {
+  path: string;
+  score: number;
+  reasons: string[];
+  line_count: number;
+  import_count: number;
+}
+
+export interface HotspotImprovement {
+  path: string;
+  hotspot_score_before: number;
+  hotspot_score_after: number;
+  line_delta: number;
+  import_delta: number;
+  improved: boolean;
+}
+
+export interface RefactorImpactReport {
+  changed_files: number;
+  non_formatting_lines_changed: number;
+  cosmetic_only_paths: string[];
+  hotspots_touched: string[];
+  hotspot_improvements: HotspotImprovement[];
+  structural_changes: string[];
+  selected_plan_unit: string | null;
 }
 
 export interface CompiledStageContract {
@@ -162,6 +195,8 @@ export interface CompiledStageContract {
   skill_routing: StageSkillRouting;
   diff_validation_rules: DiffValidationRules;
   min_impact_score: number;
+  minimum_breakdown_deltas: Partial<ScoreBreakdown>;
+  maximum_negative_breakdown_delta: number;
   enforce_plan_units: boolean;
 }
 
@@ -196,6 +231,7 @@ export interface StageValidationResult {
   diagnostics: string[];
   diff_result?: DiffResult;
   impact_score_delta?: number;
+  refactor_impact_report?: RefactorImpactReport;
 }
 
 export interface RuntimeFailureMetadata {
@@ -257,6 +293,7 @@ export interface RepoContextSnapshot {
   project_types: string[];
   architecture_patterns: string[];
   risk_signals: string[];
+  hotspots?: HotspotRecord[];
 }
 
 export interface SkillActivationRecord {
@@ -367,6 +404,8 @@ export interface ScoreDelta {
   baseline_score: number;
   final_score: number;
   delta: number;
+  breakdown_delta: ScoreBreakdown;
+  regressed_categories: Array<keyof ScoreBreakdown>;
   min_impact_score?: number;
   passed?: boolean;
 }

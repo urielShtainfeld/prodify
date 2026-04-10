@@ -5,6 +5,7 @@ import { resolveCanonicalPath } from './paths.js';
 export interface PlanUnit {
   id: string;
   description: string;
+  files: string[];
 }
 
 function extractSection(markdown: string, heading: string): string {
@@ -18,6 +19,7 @@ function normalizePlanUnits(section: string): PlanUnit[] {
   const units: PlanUnit[] = [];
   let currentId: string | null = null;
   let currentDescription = '';
+  let currentFiles: string[] = [];
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -26,12 +28,14 @@ function normalizePlanUnits(section: string): PlanUnit[] {
       if (currentId) {
         units.push({
           id: currentId,
-          description: currentDescription
+          description: currentDescription,
+          files: currentFiles
         });
       }
 
       currentId = idMatch[1].trim();
       currentDescription = '';
+      currentFiles = [];
       continue;
     }
 
@@ -42,13 +46,23 @@ function normalizePlanUnits(section: string): PlanUnit[] {
     const descriptionMatch = /^-\s+Description:\s+(.+)$/.exec(line);
     if (descriptionMatch) {
       currentDescription = descriptionMatch[1].trim();
+      continue;
+    }
+
+    const filesMatch = /^-\s+Files:\s+(.+)$/.exec(line);
+    if (filesMatch) {
+      currentFiles = filesMatch[1]
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
     }
   }
 
   if (currentId) {
     units.push({
       id: currentId,
-      description: currentDescription
+      description: currentDescription,
+      files: currentFiles
     });
   }
 
@@ -71,12 +85,18 @@ export async function readSelectedRefactorStep(repoRoot: string): Promise<PlanUn
 
   const id = /-\s+Step ID:\s+(.+)/.exec(section)?.[1]?.trim() ?? null;
   const description = /-\s+Description:\s+(.+)/.exec(section)?.[1]?.trim() ?? '';
+  const filesSection = extractSection(markdown, 'Changed Files');
+  const files = filesSection
+    .split('\n')
+    .map((line) => /^-\s+(.+)$/.exec(line.trim())?.[1]?.trim() ?? null)
+    .filter((line): line is string => Boolean(line));
   if (!id) {
     return null;
   }
 
   return {
     id,
-    description
+    description,
+    files
   };
 }

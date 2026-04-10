@@ -77,6 +77,9 @@ Use this runtime bridge to execute the next Prodify workflow stage.
 Load and follow, in this order:
 - \`.prodify/runtime/bootstrap.json\`
 - \`.prodify/runtime/current-stage.json\`
+- \`.prodify/runtime/current-iteration.json\`
+- \`.prodify/runtime/delta.json\`
+- \`.prodify/runtime/validation-delta.json\`
 - \`.prodify/state.json\`
 
 Interpret \`{{PRODIFY_EXECUTE_ARGS}}\` as the runtime command arguments.
@@ -106,6 +109,9 @@ Use this runtime bridge to resume Prodify from saved runtime state.
 Load and follow, in this order:
 - \`.prodify/runtime/bootstrap.json\`
 - \`.prodify/runtime/current-stage.json\`
+- \`.prodify/runtime/current-iteration.json\`
+- \`.prodify/runtime/delta.json\`
+- \`.prodify/runtime/validation-delta.json\`
 - \`.prodify/state.json\`
 
 Resume from the current state recorded under \`.prodify/state.json\`.

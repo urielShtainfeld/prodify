@@ -8,6 +8,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
 - Run `$prodify-init`.
 - `$prodify-init` should read `.prodify/runtime/bootstrap.json` first, then `.prodify/runtime/current-stage.json`, then `.prodify/state.json`.
 - `.prodify/AGENTS.md` is a compact human pointer, not the canonical machine bootstrap source.
+- Repeated execution should prefer `.prodify/runtime/current-iteration.json`, `.prodify/runtime/delta.json`, and `.prodify/runtime/validation-delta.json` over replaying broad stage history.
 
 ## Commands
 
@@ -20,6 +21,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
 
 - `$prodify-execute`
   - run one workflow stage
+  - consume the compact iteration and delta runtime files
   - write stage artifacts under `.prodify/artifacts/`
   - validate the stage against the compiled contract JSON
   - update runtime state after the validation result
@@ -31,6 +33,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
 
 - `$prodify-resume`
   - continue from `.prodify/state.json`
+  - reuse the compact iteration and delta runtime files
   - preserve validation checkpoints
   - fail clearly if the state is corrupt or non-resumable
 

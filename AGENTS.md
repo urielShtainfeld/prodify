@@ -1,8 +1,8 @@
 # Repository Contributor Guidance
 
-This root `AGENTS.md` is **repository-local contributor guidance only**.
+This root `AGENTS.md` is repository-local contributor guidance only.
 
-It is **not** the runtime bootstrap source used by Prodify during normal execution.
+It is not the canonical runtime bootstrap or execution interface used by Prodify during normal execution.
 
 The actual runtime flow lives inside:
 
@@ -34,6 +34,7 @@ For actual Prodify runtime behavior, use these files instead:
 
 ```text
 .prodify/AGENTS.md
+.prodify/contracts/*.contract.json
 .prodify/runtime/bootstrap.json
 .prodify/runtime/current-stage.json
 .prodify/state.json
@@ -69,6 +70,7 @@ Do not introduce or restore outdated runtime models such as:
 - `install --agent` style repo-local compatibility generation
 - root-level agent files as product-required runtime files
 - alternate workflow state stored in ad hoc task/run files that conflict with `.prodify/state.json`
+- the old task/template execution model rooted in `.prodify/tasks/` and `.prodify/templates/`
 
 If documentation or code suggests a second execution model, it should be corrected or removed.
 

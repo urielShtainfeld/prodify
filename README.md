@@ -136,12 +136,18 @@ prodify init
 
 This creates the `.prodify/` workspace inside the repo.
 
-Prodify initialization is **agent-agnostic** inside the repository.
+Repo initialization stays agent-agnostic inside the repository.
 
 That means:
 - the repo is not locked to a single agent
 - the same repo can be used with multiple supported agents
 - the active agent is resolved at runtime when `$prodify-init` runs
+
+You can inspect the current runtime at any time with:
+
+```bash
+prodify status
+```
 
 ---
 
@@ -191,6 +197,8 @@ Runtime uses compact machine-readable files such as:
 .prodify/runtime/current-stage.json
 ```
 
+`.prodify/AGENTS.md` is a compact human pointer into the runtime, while `.prodify/runtime/bootstrap.json` is the machine-readable bootstrap manifest.
+
 The goal is to avoid forcing agents to repeatedly reload broad context from many files.
 
 Runtime should rely on:
@@ -200,6 +208,7 @@ Runtime should rely on:
 - compiled contracts
 - cached repo/skill/freshness metadata
 - compact artifact summaries where possible
+- `.prodify/skills/` for product-owned stage-bounded skills
 
 ---
 
@@ -213,6 +222,8 @@ That means:
 - multiple supported agents can be used on the same repo
 - agent-specific setup is global, not embedded in the repo
 - runtime behavior is resolved when the active agent runs `$prodify-init`
+- No root-level agent files are required
+- the root `AGENTS.md` is repository-local contributor guidance, not a second runtime bootstrap
 
 ---
 

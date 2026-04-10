@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import { inspectCompiledContracts } from '../contracts/freshness.js';
 import { loadCompiledContract } from '../contracts/compiler.js';
+import { readRefactorBaselineSnapshot } from './diff-validator.js';
+import { detectHotspots, detectHotspotsFromSnapshot, evaluateHotspotImprovements } from './hotspots.js';
 import { readScoreDelta } from '../scoring/model.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { readPlanUnits, readSelectedRefactorStep } from './plan-units.js';
@@ -123,22 +125,85 @@ async function loadSelectedPlanUnit(repoRoot, stage) {
     }
     return null;
 }
+function selectFilesOfInterest(options) {
+    const planFiles = options.selectedPlanUnit?.files ?? [];
+    const hotspotFiles = options.hotspots.map((entry) => entry.path);
+    const artifactPath = options.currentArtifactSummary ? [options.currentArtifactSummary.artifact_path] : [];
+    return [...new Set([...planFiles, ...hotspotFiles.slice(0, 3), ...artifactPath])]
+        .filter((entry) => entry.length > 0)
+        .sort((left, right) => left.localeCompare(right));
+}
+function buildDeltaPayload(options) {
+    const validation = options.state.runtime.last_validation;
+    return {
+        schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
+        current_stage: currentStage(options.state),
+        current_state: options.state.runtime.current_state,
+        satisfied: validation?.passed
+            ? ['last_validation_passed']
+            : [],
+        missing: validation?.passed
+            ? []
+            : [
+                ...(validation?.missing_artifacts ?? []),
+                ...((validation?.violated_rules ?? []).map((issue) => issue.rule))
+            ].sort((left, right) => left.localeCompare(right)),
+        changed_since_last_iteration: {
+            runtime_state: options.state.runtime.current_state,
+            next_action: options.state.runtime.next_action,
+            score_delta: options.scoreSummary.delta?.delta ?? null
+        },
+        next_required_action: options.state.runtime.next_action,
+        contract_expectations: options.contract?.success_criteria ?? []
+    };
+}
+function buildValidationDeltaPayload(state) {
+    const validation = state.runtime.last_validation;
+    return {
+        schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
+        stage: state.runtime.current_stage ?? state.runtime.pending_stage ?? null,
+        status: validation?.passed ? 'pass' : validation ? 'fail' : 'unknown',
+        failed_checks: validation?.violated_rules ?? [],
+        missing_artifacts: validation?.missing_artifacts ?? [],
+        warnings: validation?.warnings ?? [],
+        diagnostics: validation?.diagnostics ?? []
+    };
+}
 export async function syncRuntimeMetadata(repoRoot, state) {
     const stage = currentStage(state);
-    const [contractInventory, contract, stageSkillResolution, scoreSummary, selectedPlanUnit, artifactSummaries] = await Promise.all([
+    const [contractInventory, contract, stageSkillResolution, scoreSummary, selectedPlanUnit, artifactSummaries, baselineSnapshot, hotspotsAfter] = await Promise.all([
         inspectCompiledContracts(repoRoot),
         loadCurrentContract(repoRoot, stage),
         loadCurrentSkillResolution(repoRoot, stage),
         readScoreSummary(repoRoot),
         loadSelectedPlanUnit(repoRoot, stage),
-        syncArtifactSummaries(repoRoot)
+        syncArtifactSummaries(repoRoot),
+        readRefactorBaselineSnapshot(repoRoot),
+        detectHotspots(repoRoot)
     ]);
+    const hotspotsBefore = baselineSnapshot ? detectHotspotsFromSnapshot(baselineSnapshot) : hotspotsAfter;
     const currentStageIndex = ARTIFACT_ORDER.findIndex((entry) => entry.stage === stage);
     const predecessorSummaries = artifactSummaries.filter((summary) => {
         const summaryIndex = ARTIFACT_ORDER.findIndex((entry) => entry.stage === summary.stage);
         return summaryIndex !== -1 && summaryIndex < currentStageIndex;
     });
     const currentStageSummary = artifactSummaries.find((summary) => summary.stage === stage) ?? null;
+    const filesOfInterest = selectFilesOfInterest({
+        selectedPlanUnit,
+        hotspots: hotspotsAfter,
+        currentArtifactSummary: currentStageSummary
+    });
+    const hotspotImprovements = state.runtime.last_validation?.diff_result
+        ? await evaluateHotspotImprovements(repoRoot, {
+            before: hotspotsBefore,
+            after: hotspotsAfter,
+            touchedPaths: [
+                ...state.runtime.last_validation.diff_result.modifiedPaths,
+                ...state.runtime.last_validation.diff_result.addedPaths,
+                ...state.runtime.last_validation.diff_result.deletedPaths
+            ]
+        })
+        : [];
     const currentStagePack = {
         schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
         current_stage: stage,
@@ -162,7 +227,9 @@ export async function syncRuntimeMetadata(repoRoot, state) {
         active_skill_ids: stageSkillResolution?.active_skill_ids ?? [],
         validation_requirements: contract?.success_criteria ?? [],
         artifact_dependencies: contract?.required_artifacts.map((artifact) => artifact.path) ?? [],
-        score_summary: scoreSummary
+        score_summary: scoreSummary,
+        hotspots: hotspotsAfter,
+        hotspot_improvements: hotspotImprovements
     };
     const bootstrapManifest = {
         schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
@@ -180,12 +247,57 @@ export async function syncRuntimeMetadata(repoRoot, state) {
         resumable: state.runtime.resumable,
         contract_freshness: contractInventory.ok ? 'synchronized' : 'repair-required',
         current_stage_context_path: '.prodify/runtime/current-stage.json',
+        current_iteration_path: '.prodify/runtime/current-iteration.json',
+        delta_path: '.prodify/runtime/delta.json',
+        validation_delta_path: '.prodify/runtime/validation-delta.json',
+        hotspots_path: '.prodify/runtime/hotspots.json',
         commands: {
             init: '$prodify-init',
             execute: '$prodify-execute',
             resume: '$prodify-resume'
         }
     };
+    const currentIteration = {
+        schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
+        current_stage: stage,
+        selected_execution_unit: selectedPlanUnit,
+        files_of_interest: filesOfInterest,
+        relevant_contract_slice: contract ? {
+            task_id: contract.task_id,
+            required_artifacts: contract.required_artifacts,
+            allowed_write_roots: contract.allowed_write_roots,
+            policy_rules: contract.policy_rules,
+            success_criteria: contract.success_criteria,
+            diff_validation_rules: contract.diff_validation_rules,
+            min_impact_score: contract.min_impact_score
+        } : null,
+        active_skills: stageSkillResolution?.active_skill_ids ?? [],
+        relevant_validation_checks: state.runtime.last_validation?.violated_rules ?? [],
+        score_snapshot: scoreSummary,
+        next_output_target: contract?.required_artifacts[0]?.path ?? null
+    };
+    const currentIterationSerialized = serializeJson(currentIteration);
+    const iterationTelemetry = {
+        schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
+        approx_bytes: currentIterationSerialized.length,
+        approx_tokens: Math.ceil(currentIterationSerialized.length / 4)
+    };
+    const hotspotsSummary = {
+        schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
+        hotspots: hotspotsAfter,
+        improvements: hotspotImprovements
+    };
+    const deltaPayload = buildDeltaPayload({
+        state,
+        contract,
+        scoreSummary
+    });
+    const validationDeltaPayload = buildValidationDeltaPayload(state);
     await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/current-stage.json'), serializeJson(currentStagePack));
     await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/bootstrap.json'), serializeJson(bootstrapManifest));
+    await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/current-iteration.json'), currentIterationSerialized);
+    await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/delta.json'), serializeJson(deltaPayload));
+    await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/validation-delta.json'), serializeJson(validationDeltaPayload));
+    await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/hotspots.json'), serializeJson(hotspotsSummary));
+    await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/iteration-telemetry.json'), serializeJson(iterationTelemetry));
 }

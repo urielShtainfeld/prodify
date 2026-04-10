@@ -33,9 +33,14 @@ export function validateCompiledContractShape(contract) {
                 skill_routing: record.skill_routing,
                 minimum_files_modified: diffValidation.minimum_files_modified ?? record.minimum_files_modified,
                 minimum_lines_changed: diffValidation.minimum_lines_changed ?? record.minimum_lines_changed,
+                minimum_non_formatting_lines_changed: diffValidation.minimum_non_formatting_lines_changed ?? record.minimum_non_formatting_lines_changed,
                 must_create_files: diffValidation.must_create_files ?? record.must_create_files,
+                forbid_cosmetic_only_changes: diffValidation.forbid_cosmetic_only_changes ?? record.forbid_cosmetic_only_changes,
+                minimum_hotspots_touched: diffValidation.minimum_hotspots_touched ?? record.minimum_hotspots_touched,
                 required_structural_changes: diffValidation.required_structural_changes ?? record.required_structural_changes,
                 min_impact_score: record.min_impact_score,
+                minimum_breakdown_deltas: record.minimum_breakdown_deltas,
+                maximum_negative_breakdown_delta: record.maximum_negative_breakdown_delta,
                 enforce_plan_units: record.enforce_plan_units
             },
             body: 'compiled-contract'

@@ -21,6 +21,14 @@ interface RepoSnapshot {
   files: SnapshotFile[];
 }
 
+function stripCodeComments(content: string): string {
+  return content
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/^\s*#.*$/gm, '')
+    .trim();
+}
+
 function isTrackedPath(relativePath: string): boolean {
   const normalized = normalizeRepoRelativePath(relativePath);
   if (!TRACKED_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
@@ -161,8 +169,11 @@ export function diffSnapshots(before: RepoSnapshot, after: RepoSnapshot): DiffRe
   const addedPaths: string[] = [];
   const deletedPaths: string[] = [];
   const formattingOnlyPaths: string[] = [];
+  const commentOnlyPaths: string[] = [];
   let linesAdded = 0;
   let linesRemoved = 0;
+  let nonFormattingLinesAdded = 0;
+  let nonFormattingLinesRemoved = 0;
   const removedLineCounts = new Map<string, number>();
 
   for (const relativePath of allPaths) {
@@ -171,7 +182,9 @@ export function diffSnapshots(before: RepoSnapshot, after: RepoSnapshot): DiffRe
 
     if (!beforeFile && afterFile) {
       addedPaths.push(relativePath);
-      linesAdded += afterFile.content.replace(/\r\n/g, '\n').split('\n').length;
+      const added = afterFile.content.replace(/\r\n/g, '\n').split('\n').length;
+      linesAdded += added;
+      nonFormattingLinesAdded += added;
       continue;
     }
 
@@ -179,6 +192,7 @@ export function diffSnapshots(before: RepoSnapshot, after: RepoSnapshot): DiffRe
       deletedPaths.push(relativePath);
       const removed = beforeFile.content.replace(/\r\n/g, '\n').split('\n').length;
       linesRemoved += removed;
+      nonFormattingLinesRemoved += removed;
       removedLineCounts.set(relativePath, removed);
       continue;
     }
@@ -193,9 +207,16 @@ export function diffSnapshots(before: RepoSnapshot, after: RepoSnapshot): DiffRe
       continue;
     }
 
+    if (normalizeWhitespace(stripCodeComments(beforeFile.content)) === normalizeWhitespace(stripCodeComments(afterFile.content))) {
+      commentOnlyPaths.push(relativePath);
+      continue;
+    }
+
     const lineDiff = diffLines(beforeFile.content, afterFile.content);
     linesAdded += lineDiff.added;
     linesRemoved += lineDiff.removed;
+    nonFormattingLinesAdded += lineDiff.added;
+    nonFormattingLinesRemoved += lineDiff.removed;
     removedLineCounts.set(relativePath, lineDiff.removed);
   }
 
@@ -205,10 +226,13 @@ export function diffSnapshots(before: RepoSnapshot, after: RepoSnapshot): DiffRe
     filesDeleted: deletedPaths.length,
     linesAdded,
     linesRemoved,
+    nonFormattingLinesAdded,
+    nonFormattingLinesRemoved,
     modifiedPaths,
     addedPaths,
     deletedPaths,
     formattingOnlyPaths,
+    commentOnlyPaths,
     structuralChanges: detectStructuralChanges({
       addedPaths,
       modifiedPaths,

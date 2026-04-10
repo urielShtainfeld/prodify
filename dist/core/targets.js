@@ -3,26 +3,26 @@ export const RUNTIME_PROFILES = {
     codex: {
         name: 'codex',
         displayName: 'Codex',
-        bootstrapPrompt: 'Read .prodify/AGENTS.md and bootstrap Prodify for this repository.',
-        bootstrapSummary: 'Manual bootstrap through .prodify/AGENTS.md.',
+        bootstrapPrompt: 'Open this repository in Codex and run `$prodify-init`.',
+        bootstrapSummary: 'Run `$prodify-init` inside Codex.',
         executeCommand: '$prodify-execute',
         resumeCommand: '$prodify-resume',
-        nuances: ['Prefer the explicit instruction to read .prodify/AGENTS.md before any repo scan.']
+        nuances: ['`$prodify-init` should load `.prodify/runtime/bootstrap.json` before broader repo context.']
     },
     claude: {
         name: 'claude',
         displayName: 'Claude',
-        bootstrapPrompt: 'Read .prodify/AGENTS.md and bootstrap Prodify for this repository. Then use the runtime commands from that file.',
-        bootstrapSummary: 'Manual bootstrap from canonical guidance inside .prodify/.',
+        bootstrapPrompt: 'Open this repository in Claude and run `$prodify-init`.',
+        bootstrapSummary: 'Run `$prodify-init` inside Claude.',
         executeCommand: '$prodify-execute',
         resumeCommand: '$prodify-resume',
-        nuances: ['Keep the flow anchored to .prodify/AGENTS.md instead of relying on root discovery.']
+        nuances: ['Use `.prodify/runtime/bootstrap.json` as the canonical bootstrap source.']
     },
     copilot: {
         name: 'copilot',
         displayName: 'Copilot',
-        bootstrapPrompt: 'Read .prodify/AGENTS.md, bootstrap Prodify for this repository, and keep the workflow state under .prodify/.',
-        bootstrapSummary: 'Manual bootstrap with explicit .prodify-only state.',
+        bootstrapPrompt: 'Open this repository in Copilot and run `$prodify-init`.',
+        bootstrapSummary: 'Run `$prodify-init` inside Copilot.',
         executeCommand: '$prodify-execute',
         resumeCommand: '$prodify-resume',
         nuances: ['The main flow does not require .github/copilot-instructions.md.']
@@ -30,8 +30,8 @@ export const RUNTIME_PROFILES = {
     opencode: {
         name: 'opencode',
         displayName: 'OpenCode',
-        bootstrapPrompt: 'Read .prodify/AGENTS.md and bootstrap Prodify for this repository using the .prodify runtime state.',
-        bootstrapSummary: 'Manual bootstrap with runtime state anchored in .prodify/state.json.',
+        bootstrapPrompt: 'Open this repository in OpenCode and run `$prodify-init`.',
+        bootstrapSummary: 'Run `$prodify-init` inside OpenCode.',
         executeCommand: '$prodify-execute',
         resumeCommand: '$prodify-resume',
         nuances: ['No root-level OpenCode adapter is required for the default flow.']

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import { writeFileEnsuringDir } from './fs.js';
 import { USER_OWNED_CANONICAL_PATHS, USER_OWNED_CANONICAL_PREFIXES, resolveRepoPath } from './paths.js';
 import { loadDefaultPreset } from '../presets/loader.js';
-import { readRuntimeState, createInitialRuntimeState, normalizeRuntimeState, serializeRuntimeState } from './state.js';
+import { readRuntimeState, createInitialRuntimeState, normalizeRuntimeState, writeRuntimeState } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
 import { synchronizeRuntimeContracts } from '../contracts/compiler.js';
 export async function updateProdifySetup(repoRoot) {
@@ -10,6 +10,7 @@ export async function updateProdifySetup(repoRoot) {
     const versionStatus = await inspectVersionStatus(repoRoot, preset.metadata);
     const writtenCanonical = [];
     const preservedCanonical = [];
+    let nextRuntimeState = null;
     for (const entry of preset.entries) {
         const targetPath = resolveRepoPath(repoRoot, entry.relativePath);
         const isUserOwned = USER_OWNED_CANONICAL_PATHS.includes(entry.relativePath);
@@ -25,21 +26,19 @@ export async function updateProdifySetup(repoRoot) {
             }
         }
         if (entry.relativePath === '.prodify/state.json') {
-            let nextState;
             try {
                 const existingState = await readRuntimeState(repoRoot, {
                     presetMetadata: preset.metadata
                 });
-                nextState = normalizeRuntimeState(existingState, {
+                nextRuntimeState = normalizeRuntimeState(existingState, {
                     presetMetadata: preset.metadata
                 });
             }
             catch {
-                nextState = createInitialRuntimeState({
+                nextRuntimeState = createInitialRuntimeState({
                     presetMetadata: preset.metadata
                 });
             }
-            await writeFileEnsuringDir(targetPath, serializeRuntimeState(nextState));
             writtenCanonical.push(entry.relativePath);
             continue;
         }
@@ -47,6 +46,9 @@ export async function updateProdifySetup(repoRoot) {
         writtenCanonical.push(entry.relativePath);
     }
     const compiledContracts = await synchronizeRuntimeContracts(repoRoot);
+    await writeRuntimeState(repoRoot, nextRuntimeState ?? createInitialRuntimeState({
+        presetMetadata: preset.metadata
+    }));
     return {
         versionStatus: versionStatus.status,
         schemaMigrationRequired: versionStatus.schemaMigrationRequired,

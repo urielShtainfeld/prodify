@@ -110,11 +110,12 @@ test('prompt builder includes runtime commands and current contract checkpoint c
 
   assert.match(buildRuntimeCommandReference(), /prodify setup-agent <agent>/);
   assert.match(buildRuntimeCommandReference(), /\.prodify\/contracts\/\*\.contract\.json/);
+  assert.match(buildRuntimeCommandReference(), /\.prodify\/runtime\/bootstrap\.json/);
   assert.match(buildRuntimeCommandReference({ concise: true }), /\$prodify-resume/);
-  assert.match(buildBootstrapPrompt('codex'), /Read \.prodify\/AGENTS\.md/);
-  assert.match(buildBootstrapPrompt('claude'), /Read \.prodify\/AGENTS\.md/);
-  assert.match(buildBootstrapPrompt('copilot'), /Read \.prodify\/AGENTS\.md/);
-  assert.match(buildBootstrapPrompt('opencode'), /Read \.prodify\/AGENTS\.md/);
+  assert.match(buildBootstrapPrompt('codex'), /Open this repository in Codex and run `\$prodify-init`\./);
+  assert.match(buildBootstrapPrompt('claude'), /Open this repository in Claude and run `\$prodify-init`\./);
+  assert.match(buildBootstrapPrompt('copilot'), /Open this repository in Copilot and run `\$prodify-init`\./);
+  assert.match(buildBootstrapPrompt('opencode'), /Open this repository in OpenCode and run `\$prodify-init`\./);
   assert.match(buildExecutionPrompt(bootstrapped), /Current task: 01-understand/);
   assert.equal(stageToTaskId('validate'), '06-validate');
 });

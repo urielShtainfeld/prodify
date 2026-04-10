@@ -39,6 +39,7 @@ async function inspectGitignore(repoRoot) {
 }
 async function inspectBootstrapGuidance(repoRoot) {
     const guidancePath = resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md');
+    const bootstrapPath = resolveCanonicalPath(repoRoot, '.prodify/runtime/bootstrap.json');
     if (!(await pathExists(guidancePath))) {
         return {
             label: 'bootstrap/guidance',
@@ -46,13 +47,20 @@ async function inspectBootstrapGuidance(repoRoot) {
             details: '.prodify/AGENTS.md is missing'
         };
     }
+    if (!(await pathExists(bootstrapPath))) {
+        return {
+            label: 'bootstrap/guidance',
+            ok: false,
+            details: '.prodify/runtime/bootstrap.json is missing'
+        };
+    }
     const guidance = await fs.readFile(guidancePath, 'utf8');
     return {
         label: 'bootstrap/guidance',
         ok: hasManualBootstrapGuidance(guidance),
         details: hasManualBootstrapGuidance(guidance)
-            ? 'manual agent entry is documented in .prodify/AGENTS.md'
-            : '.prodify/AGENTS.md does not contain the manual bootstrap instruction'
+            ? 'bootstrap pointer and runtime manifest are present'
+            : '.prodify/AGENTS.md does not point to the canonical bootstrap runtime'
     };
 }
 export async function runDoctor(repoRoot) {

@@ -9,7 +9,7 @@ Describe the repository purpose here.
 - Capture project goals.
 - Record constraints and conventions.
 
-## Agent Bootstrap
+## Runtime Note
 
-- The user starts by telling the agent to read `.prodify/AGENTS.md`.
-- The main Prodify flow should stay inside `.prodify/`.
+- The main Prodify flow stays inside `.prodify/`.
+- Bootstrap details live in `.prodify/runtime/bootstrap.json` and `.prodify/AGENTS.md`.

@@ -3,6 +3,7 @@ import { ProdifyError } from './errors.js';
 import { pathExists, writeFileEnsuringDir } from './fs.js';
 import { resolveCanonicalPath } from './paths.js';
 import { writeRefactorBaselineSnapshot } from './diff-validator.js';
+import { syncRuntimeMetadata } from './runtime-metadata.js';
 import { syncScoreArtifactsForRuntimeState } from '../scoring/model.js';
 export const RUNTIME_STATE_SCHEMA_VERSION = '2';
 export const RUNTIME_STATUS = {
@@ -223,4 +224,5 @@ export async function writeRuntimeState(repoRoot, state) {
         await writeRefactorBaselineSnapshot(repoRoot);
     }
     await syncScoreArtifactsForRuntimeState(repoRoot, state);
+    await syncRuntimeMetadata(repoRoot, state);
 }

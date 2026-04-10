@@ -35,10 +35,6 @@ prodify init
 Then open your coding agent and start the runtime:
 
 ```text
-Read .prodify/AGENTS.md and bootstrap Prodify for this repository.
-```
-
-```text
 $prodify-init
 $prodify-execute
 ```
@@ -51,15 +47,16 @@ Use `$prodify-execute --auto` to continue without pausing between stages, or `$p
 2. Run `prodify setup-agent <agent>` once per machine for the agent you use.
 3. Run `prodify init` inside the repository you want to upgrade.
 4. Open that repository in a supported coding agent.
-5. Tell the agent to read `.prodify/AGENTS.md`.
-6. Run `$prodify-init`, then continue with `$prodify-execute` or `$prodify-execute --auto`.
+5. Run `$prodify-init`.
+6. Continue with `$prodify-execute` or `$prodify-execute --auto`.
 
 Repo initialization stays agent-agnostic. The active runtime is resolved when `$prodify-init` runs inside the opened agent, not when `prodify init` creates `.prodify/`.
 
 ## How It Works
 
 - `prodify init` creates the `.prodify/` runtime workspace in the repo.
-- The agent reads `.prodify/AGENTS.md` as the runtime entrypoint.
+- `.prodify/runtime/bootstrap.json` is the canonical machine-readable bootstrap source.
+- `.prodify/AGENTS.md` is a compact human pointer, not the primary runtime input.
 - `$prodify-init` prepares the in-agent run state.
 - `$prodify-execute` runs one stage at a time.
 - `$prodify-execute --auto` keeps advancing until a hard stop.
@@ -127,16 +124,16 @@ Stage order:
 - Copilot
 - OpenCode
 
-All supported agents share the same bootstrap path: read `.prodify/AGENTS.md`, then run `$prodify-init`.
+All supported agents share the same default bootstrap command: run `$prodify-init`. The `.prodify/AGENTS.md` file remains as a lightweight human pointer.
 
 ## Development / Contributing
 
 Prodify users and Prodify contributors follow different entrypoints:
 
-- Product users start from `.prodify/AGENTS.md` inside the repository they want to improve.
+- Product users normally initialize the runtime by running `$prodify-init` in the opened agent.
 - Contributors working on the Prodify source repository follow the root [AGENTS.md](/Users/urielsh/projects/prodify/AGENTS.md).
 
-In this repository, root `AGENTS.md` is repository-local contributor guidance. `.prodify/AGENTS.md` remains the runtime entrypoint for product users.
+In this repository, root `AGENTS.md` is repository-local contributor guidance. `.prodify/AGENTS.md` remains the pointer file for product users, while `.prodify/runtime/bootstrap.json` is the canonical machine input.
 
 For this self-hosting repository, the checked-in repo-root `.prodify/` directory is a development workspace for Prodify itself, not a byte-for-byte snapshot of fresh `prodify init` output.
 

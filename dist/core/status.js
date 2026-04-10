@@ -37,7 +37,7 @@ function describeWorkspaceHealth(report) {
         issues.push('runtime state unreadable');
     }
     if (!report.manualBootstrapReady) {
-        issues.push('bootstrap guidance incomplete');
+        issues.push('bootstrap runtime incomplete');
     }
     return issues.length === 0 ? 'healthy' : `repair required (${issues.join('; ')})`;
 }
@@ -135,9 +135,11 @@ function describeImpactScore(scoreDelta) {
     const verdict = scoreDelta.passed === undefined ? '' : `, passed=${scoreDelta.passed}`;
     return `${scoreDelta.baseline_score} -> ${scoreDelta.final_score} (delta ${scoreDelta.delta}${threshold}${verdict})`;
 }
-async function checkManualBootstrapGuidance(repoRoot) {
+async function checkBootstrapReadiness(repoRoot) {
     const agentsPath = resolveCanonicalPath(repoRoot, '.prodify/AGENTS.md');
-    if (!(await pathExists(agentsPath))) {
+    const bootstrapPath = resolveCanonicalPath(repoRoot, '.prodify/runtime/bootstrap.json');
+    const stageContextPath = resolveCanonicalPath(repoRoot, '.prodify/runtime/current-stage.json');
+    if (!(await pathExists(agentsPath)) || !(await pathExists(bootstrapPath)) || !(await pathExists(stageContextPath))) {
         return false;
     }
     const content = await fs.readFile(agentsPath, 'utf8');
@@ -226,7 +228,7 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
     catch (error) {
         runtimeStateError = error instanceof Error ? error : new Error(String(error));
     }
-    const manualBootstrapReady = await checkManualBootstrapGuidance(repoRoot);
+    const manualBootstrapReady = await checkBootstrapReadiness(repoRoot);
     scoreDelta = await readScoreDelta(repoRoot);
     const canonicalOk = missingPaths.length === 0;
     if (canonicalOk && contractInventory.ok) {
@@ -279,6 +281,59 @@ export async function inspectRepositoryStatus(repoRoot, options = {}) {
     };
 }
 export function renderStatusReport(report) {
+    return renderCompactStatusReport(report);
+}
+function buildStatusJson(report) {
+    return {
+        repository: report.initialized ? 'initialized' : 'not initialized',
+        ok: report.ok,
+        workspace_health: describeWorkspaceHealth(report),
+        canonical_files: describeCanonicalHealth(report.canonicalMissing),
+        contract_freshness: describeContractFreshness(report),
+        version_schema: describeVersion(report.versionStatus, report.presetMetadata),
+        runtime_binding: 'agent-agnostic',
+        global_agent_setup: report.configuredAgents,
+        current_stage: report.runtimeState?.runtime.current_stage ?? report.runtimeState?.runtime.pending_stage ?? null,
+        execution_state: describeRuntime(report.runtimeState?.runtime ?? null),
+        validation: describeStageValidation(report),
+        scoring: {
+            summary: describeImpactScore(report.scoreDelta),
+            delta: report.scoreDelta
+        },
+        active_skills: report.stageSkillResolution?.active_skill_ids ?? [],
+        considered_skills: report.stageSkillResolution?.considered_skills.map((skill) => ({
+            id: skill.id,
+            active: skill.active,
+            reason: skill.reason
+        })) ?? [],
+        bootstrap: {
+            ready: report.manualBootstrapReady,
+            profile: report.bootstrapProfile,
+            prompt: report.bootstrapPrompt
+        },
+        resumable: report.resumable,
+        recommended_next_action: report.recommendedNextAction
+    };
+}
+function renderCompactStatusReport(report) {
+    const lines = [
+        'Prodify Status',
+        `Repository: ${report.initialized ? 'initialized' : 'not initialized'}`,
+        `Health: ${describeWorkspaceHealth(report)}`,
+        `Contracts: ${describeContractFreshness(report)}`,
+        `State: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
+        `Validation: ${describeStageValidation(report)}`,
+        `Impact: ${describeImpactScore(report.scoreDelta)}`,
+        `Skills: ${describeActiveSkills(report)}`,
+        `Bootstrap: ${report.manualBootstrapReady ? `${report.bootstrapProfile} ready` : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
+        `Next action: ${report.recommendedNextAction}`
+    ];
+    if (report.runtimeStateError) {
+        lines.splice(4, 0, `Runtime state: ${report.runtimeStateError.message}`);
+    }
+    return lines.join('\n');
+}
+function renderVerboseStatusReport(report) {
     const lines = [
         'Prodify Status',
         `Repository: ${report.initialized ? 'initialized' : 'not initialized'}`,
@@ -294,7 +349,7 @@ export function renderStatusReport(report) {
         `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
         `Stage validation: ${describeStageValidation(report)}`,
         `Impact score: ${describeImpactScore(report.scoreDelta)}`,
-        `Manual bootstrap: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/AGENTS.md guidance'}`,
+        `Bootstrap runtime: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
         `Bootstrap profile: ${report.bootstrapProfile}`,
         `Bootstrap prompt: ${report.bootstrapPrompt}`,
         `Resumable: ${report.resumable ? 'yes' : 'no'}`,
@@ -304,4 +359,13 @@ export function renderStatusReport(report) {
         lines.splice(7, 0, `Runtime state: ${report.runtimeStateError.message}`);
     }
     return lines.join('\n');
+}
+export function renderStatusReportWithMode(report, mode) {
+    if (mode === 'json') {
+        return JSON.stringify(buildStatusJson(report), null, 2);
+    }
+    if (mode === 'verbose') {
+        return renderVerboseStatusReport(report);
+    }
+    return renderCompactStatusReport(report);
 }

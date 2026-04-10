@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 
 import { writeFileEnsuringDir } from './fs.js';
+import { syncProdifyGitignore } from './gitignore.js';
 import { USER_OWNED_CANONICAL_PATHS, USER_OWNED_CANONICAL_PREFIXES, resolveRepoPath } from './paths.js';
 import { loadDefaultPreset } from '../presets/loader.js';
 import { readRuntimeState, createInitialRuntimeState, normalizeRuntimeState, writeRuntimeState } from './state.js';
@@ -55,6 +56,7 @@ export async function updateProdifySetup(repoRoot: string): Promise<UpdateSummar
   await writeRuntimeState(repoRoot, nextRuntimeState ?? createInitialRuntimeState({
     presetMetadata: preset.metadata
   }));
+  await syncProdifyGitignore(repoRoot);
 
   return {
     versionStatus: versionStatus.status,

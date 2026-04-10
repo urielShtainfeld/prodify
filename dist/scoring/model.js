@@ -11,6 +11,20 @@ function roundScore(value) {
 function serializeJson(value) {
     return `${JSON.stringify(value, null, 2)}\n`;
 }
+function subtractBreakdowns(finalBreakdown, baselineBreakdown) {
+    return {
+        structure: roundScore(finalBreakdown.structure - baselineBreakdown.structure),
+        maintainability: roundScore(finalBreakdown.maintainability - baselineBreakdown.maintainability),
+        complexity: roundScore(finalBreakdown.complexity - baselineBreakdown.complexity),
+        testability: roundScore(finalBreakdown.testability - baselineBreakdown.testability)
+    };
+}
+function regressedCategories(breakdown) {
+    return Object.entries(breakdown)
+        .filter(([, value]) => value < 0)
+        .map(([key]) => key)
+        .sort((left, right) => left.localeCompare(right));
+}
 async function removeIfExists(targetPath) {
     if (await pathExists(targetPath)) {
         await fs.rm(targetPath);
@@ -76,11 +90,14 @@ export async function calculateCurrentImpactDelta(repoRoot) {
     }
     const baseline = JSON.parse(await fs.readFile(baselinePath, 'utf8'));
     const current = await calculateRepositoryQuality(repoRoot);
+    const breakdownDelta = subtractBreakdowns(current.breakdown, baseline.breakdown);
     return {
         schema_version: SCORE_SCHEMA_VERSION,
         baseline_score: baseline.total_score,
         final_score: current.total_score,
-        delta: roundScore(current.total_score - baseline.total_score)
+        delta: roundScore(current.total_score - baseline.total_score),
+        breakdown_delta: breakdownDelta,
+        regressed_categories: regressedCategories(breakdownDelta)
     };
 }
 export async function writeScoreSnapshot(repoRoot, { kind, runtimeState }) {
@@ -90,6 +107,7 @@ export async function writeScoreSnapshot(repoRoot, { kind, runtimeState }) {
     });
     const metricsDir = resolveRepoPath(repoRoot, '.prodify/metrics');
     await writeFileEnsuringDir(path.join(metricsDir, `${kind}.score.json`), serializeJson(snapshot));
+    await writeFileEnsuringDir(path.join(metricsDir, `${kind}.json`), serializeJson(snapshot));
     await writeFileEnsuringDir(path.join(metricsDir, `${kind}.tools.json`), serializeJson({
         schema_version: SCORE_SCHEMA_VERSION,
         kind,
@@ -102,12 +120,15 @@ export async function writeScoreDelta(repoRoot, options = {}) {
     const baseline = JSON.parse(await fs.readFile(path.join(metricsDir, 'baseline.score.json'), 'utf8'));
     const final = JSON.parse(await fs.readFile(path.join(metricsDir, 'final.score.json'), 'utf8'));
     const deltaValue = roundScore(final.total_score - baseline.total_score);
+    const breakdownDelta = subtractBreakdowns(final.breakdown, baseline.breakdown);
     const threshold = options.minImpactScore;
     const delta = {
         schema_version: SCORE_SCHEMA_VERSION,
         baseline_score: baseline.total_score,
         final_score: final.total_score,
         delta: deltaValue,
+        breakdown_delta: breakdownDelta,
+        regressed_categories: regressedCategories(breakdownDelta),
         ...(threshold !== undefined ? {
             min_impact_score: threshold,
             passed: deltaValue >= threshold
@@ -129,6 +150,7 @@ export async function syncScoreArtifactsForRuntimeState(repoRoot, runtimeState) 
             kind: 'baseline',
             runtimeState
         });
+        await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.json'));
         await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.score.json'));
         await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.tools.json'));
         await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/delta.json'));

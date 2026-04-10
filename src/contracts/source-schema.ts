@@ -6,7 +6,8 @@ import type {
   CompiledContractArtifactRule,
   CompiledStageContract,
   ContractSourceDocument,
-  FlowStage
+  FlowStage,
+  ScoreBreakdown
 } from '../types.js';
 
 export const CONTRACT_STAGE_NAMES: readonly FlowStage[] = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
@@ -80,6 +81,30 @@ function asOptionalBoolean(value: unknown, fieldName: string, fallback = false):
   }
 
   return value;
+}
+
+function asOptionalScoreBreakdown(value: unknown, fieldName: string): Partial<ScoreBreakdown> {
+  if (value === undefined || value === null || value === '') {
+    return {};
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new ProdifyError(`Contract frontmatter field "${fieldName}" must be a mapping.`, {
+      code: 'CONTRACT_SCHEMA_INVALID'
+    });
+  }
+
+  const record = value as Record<string, unknown>;
+  const breakdown: Partial<ScoreBreakdown> = {};
+  for (const key of ['structure', 'maintainability', 'complexity', 'testability'] as const) {
+    if (record[key] === undefined || record[key] === null || record[key] === '') {
+      continue;
+    }
+
+    breakdown[key] = asOptionalNonNegativeNumber(record[key], `${fieldName}.${key}`);
+  }
+
+  return breakdown;
 }
 
 function asStage(value: unknown): FlowStage {
@@ -182,10 +207,15 @@ export function normalizeSourceContractDocument(options: {
     diff_validation_rules: {
       minimum_files_modified: asOptionalNonNegativeInteger(document.frontmatter.minimum_files_modified, 'minimum_files_modified'),
       minimum_lines_changed: asOptionalNonNegativeInteger(document.frontmatter.minimum_lines_changed, 'minimum_lines_changed'),
+      minimum_non_formatting_lines_changed: asOptionalNonNegativeInteger(document.frontmatter.minimum_non_formatting_lines_changed, 'minimum_non_formatting_lines_changed'),
       must_create_files: asOptionalBoolean(document.frontmatter.must_create_files, 'must_create_files'),
+      forbid_cosmetic_only_changes: asOptionalBoolean(document.frontmatter.forbid_cosmetic_only_changes, 'forbid_cosmetic_only_changes'),
+      minimum_hotspots_touched: asOptionalNonNegativeInteger(document.frontmatter.minimum_hotspots_touched, 'minimum_hotspots_touched'),
       required_structural_changes: asOptionalStringArray(document.frontmatter.required_structural_changes, 'required_structural_changes')
     },
     min_impact_score: asOptionalNonNegativeNumber(document.frontmatter.min_impact_score, 'min_impact_score'),
+    minimum_breakdown_deltas: asOptionalScoreBreakdown(document.frontmatter.minimum_breakdown_deltas, 'minimum_breakdown_deltas'),
+    maximum_negative_breakdown_delta: asOptionalNonNegativeNumber(document.frontmatter.maximum_negative_breakdown_delta, 'maximum_negative_breakdown_delta'),
     enforce_plan_units: asOptionalBoolean(document.frontmatter.enforce_plan_units, 'enforce_plan_units')
   };
 }

@@ -5,7 +5,7 @@ import { ProdifyError } from '../core/errors.js';
 import { pathExists, writeFileEnsuringDir } from '../core/fs.js';
 import { resolveRepoPath } from '../core/paths.js';
 import { calculateRepositoryQuality } from './scoring-engine.js';
-import type { ProdifyState, ScoreDelta, ScoreMetric, ScoreSnapshot, ScoreSnapshotKind } from '../types.js';
+import type { ProdifyState, ScoreBreakdown, ScoreDelta, ScoreMetric, ScoreSnapshot, ScoreSnapshotKind } from '../types.js';
 
 const SCORE_SCHEMA_VERSION = '2';
 
@@ -15,6 +15,22 @@ function roundScore(value: number): number {
 
 function serializeJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function subtractBreakdowns(finalBreakdown: ScoreBreakdown, baselineBreakdown: ScoreBreakdown): ScoreBreakdown {
+  return {
+    structure: roundScore(finalBreakdown.structure - baselineBreakdown.structure),
+    maintainability: roundScore(finalBreakdown.maintainability - baselineBreakdown.maintainability),
+    complexity: roundScore(finalBreakdown.complexity - baselineBreakdown.complexity),
+    testability: roundScore(finalBreakdown.testability - baselineBreakdown.testability)
+  };
+}
+
+function regressedCategories(breakdown: ScoreBreakdown): Array<keyof ScoreBreakdown> {
+  return (Object.entries(breakdown) as Array<[keyof ScoreBreakdown, number]>)
+    .filter(([, value]) => value < 0)
+    .map(([key]) => key)
+    .sort((left, right) => left.localeCompare(right));
 }
 
 async function removeIfExists(targetPath: string): Promise<void> {
@@ -98,11 +114,14 @@ export async function calculateCurrentImpactDelta(repoRoot: string): Promise<Sco
 
   const baseline = JSON.parse(await fs.readFile(baselinePath, 'utf8')) as ScoreSnapshot;
   const current = await calculateRepositoryQuality(repoRoot);
+  const breakdownDelta = subtractBreakdowns(current.breakdown, baseline.breakdown);
   return {
     schema_version: SCORE_SCHEMA_VERSION,
     baseline_score: baseline.total_score,
     final_score: current.total_score,
-    delta: roundScore(current.total_score - baseline.total_score)
+    delta: roundScore(current.total_score - baseline.total_score),
+    breakdown_delta: breakdownDelta,
+    regressed_categories: regressedCategories(breakdownDelta)
   };
 }
 
@@ -123,6 +142,7 @@ export async function writeScoreSnapshot(
   const metricsDir = resolveRepoPath(repoRoot, '.prodify/metrics');
 
   await writeFileEnsuringDir(path.join(metricsDir, `${kind}.score.json`), serializeJson(snapshot));
+  await writeFileEnsuringDir(path.join(metricsDir, `${kind}.json`), serializeJson(snapshot));
   await writeFileEnsuringDir(path.join(metricsDir, `${kind}.tools.json`), serializeJson({
     schema_version: SCORE_SCHEMA_VERSION,
     kind,
@@ -137,12 +157,15 @@ export async function writeScoreDelta(repoRoot: string, options: { minImpactScor
   const baseline = JSON.parse(await fs.readFile(path.join(metricsDir, 'baseline.score.json'), 'utf8')) as ScoreSnapshot;
   const final = JSON.parse(await fs.readFile(path.join(metricsDir, 'final.score.json'), 'utf8')) as ScoreSnapshot;
   const deltaValue = roundScore(final.total_score - baseline.total_score);
+  const breakdownDelta = subtractBreakdowns(final.breakdown, baseline.breakdown);
   const threshold = options.minImpactScore;
   const delta: ScoreDelta = {
     schema_version: SCORE_SCHEMA_VERSION,
     baseline_score: baseline.total_score,
     final_score: final.total_score,
     delta: deltaValue,
+    breakdown_delta: breakdownDelta,
+    regressed_categories: regressedCategories(breakdownDelta),
     ...(threshold !== undefined ? {
       min_impact_score: threshold,
       passed: deltaValue >= threshold
@@ -168,6 +191,7 @@ export async function syncScoreArtifactsForRuntimeState(repoRoot: string, runtim
       kind: 'baseline',
       runtimeState
     });
+    await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.json'));
     await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.score.json'));
     await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/final.tools.json'));
     await removeIfExists(resolveRepoPath(repoRoot, '.prodify/metrics/delta.json'));

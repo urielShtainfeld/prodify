@@ -49,9 +49,15 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
   assert.match(result.stdout, /Default inside-agent bootstrap: open a configured agent in this repo and run `\$prodify-init`/);
   assert.match(result.stdout, /Compact runtime bootstrap was generated under `\.prodify\/runtime\/bootstrap\.json`/);
   assert.match(result.stdout, /Compiled runtime contracts were generated under \.prodify\/contracts\//);
+  assert.match(result.stdout, /Gitignore: updated at \.gitignore/);
   await fs.access(path.join(repoRoot, '.prodify', 'state.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'bootstrap.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'current-stage.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'current-iteration.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'delta.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'validation-delta.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'hotspots.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'iteration-telemetry.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'repo-context.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'skill-resolution', 'understand.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime-commands.md'));
@@ -60,6 +66,10 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
   await fs.access(path.join(repoRoot, '.prodify', 'contracts', 'manifest.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'artifacts', 'README.md'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'README.md'));
+  const gitignore = await readRepoFile(repoRoot, '.gitignore');
+  assert.match(gitignore, /# BEGIN PRODIFY GENERATED/);
+  assert.match(gitignore, /\.prodify\/runtime\//);
+  assert.doesNotMatch(gitignore, /^\.prodify\/$/m);
   await assertMissing(repoRoot, 'AGENTS.md');
   await assertMissing(repoRoot, 'CLAUDE.md');
   await assertMissing(repoRoot, '.github/copilot-instructions.md');

@@ -22,7 +22,10 @@ forbidden_writes:
   - .prodify/contracts/
 minimum_files_modified: 1
 minimum_lines_changed: 10
+minimum_non_formatting_lines_changed: 10
 must_create_files: false
+forbid_cosmetic_only_changes: true
+minimum_hotspots_touched: 1
 required_structural_changes:
   - module-boundary-created
 enforce_plan_units: true
@@ -33,6 +36,7 @@ success_criteria:
   - The selected plan step is implemented fully.
   - Unrelated files remain untouched.
   - The refactor introduces measurable structural improvement.
+  - The refactor changes a high-value hotspot when hotspots are present.
 ---
 # Refactor Contract
 

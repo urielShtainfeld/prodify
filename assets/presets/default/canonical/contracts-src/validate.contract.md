@@ -24,6 +24,10 @@ allowed_write_roots:
 forbidden_writes:
   - src/
 min_impact_score: 1
+minimum_breakdown_deltas:
+  structure: 0
+  maintainability: 0
+maximum_negative_breakdown_delta: 0
 policy_rules:
   - Validation must follow every refactor step.
   - Critical regressions block forward progress.
@@ -31,6 +35,7 @@ success_criteria:
   - Validation records whether regressions were found.
   - The result is strong enough to gate the next runtime transition.
   - The measured impact score exceeds the minimum threshold.
+  - Score regressions do not exceed the allowed threshold.
 skill_routing:
   default_skills:
     - test-hardening

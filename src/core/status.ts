@@ -173,7 +173,20 @@ function describeImpactScore(scoreDelta: ScoreDelta | null): string {
 
   const threshold = scoreDelta.min_impact_score !== undefined ? `, threshold=${scoreDelta.min_impact_score}` : '';
   const verdict = scoreDelta.passed === undefined ? '' : `, passed=${scoreDelta.passed}`;
-  return `${scoreDelta.baseline_score} -> ${scoreDelta.final_score} (delta ${scoreDelta.delta}${threshold}${verdict})`;
+  const regressions = scoreDelta.regressed_categories.length > 0
+    ? `, regressed=${scoreDelta.regressed_categories.join('/')}`
+    : '';
+  return `${scoreDelta.baseline_score} -> ${scoreDelta.final_score} (delta ${scoreDelta.delta}${threshold}${verdict}${regressions})`;
+}
+
+function describeHotspotImpact(report: StatusReport): string {
+  const impact = report.runtimeState?.runtime.last_validation?.refactor_impact_report;
+  if (!impact) {
+    return 'not available';
+  }
+
+  const improvements = impact.hotspot_improvements.filter((entry) => entry.improved).map((entry) => entry.path);
+  return `${impact.hotspots_touched.length} touched, improved=${improvements.join(',') || 'none'}`;
 }
 
 async function checkBootstrapReadiness(repoRoot: string): Promise<boolean> {
@@ -381,6 +394,10 @@ function buildStatusJson(report: StatusReport): Record<string, unknown> {
       summary: describeImpactScore(report.scoreDelta),
       delta: report.scoreDelta
     },
+    hotspots: {
+      summary: describeHotspotImpact(report),
+      last_refactor_impact: report.runtimeState?.runtime.last_validation?.refactor_impact_report ?? null
+    },
     active_skills: report.stageSkillResolution?.active_skill_ids ?? [],
     considered_skills: report.stageSkillResolution?.considered_skills.map((skill) => ({
       id: skill.id,
@@ -406,6 +423,7 @@ function renderCompactStatusReport(report: StatusReport): string {
     `State: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
     `Validation: ${describeStageValidation(report)}`,
     `Impact: ${describeImpactScore(report.scoreDelta)}`,
+    `Hotspots: ${describeHotspotImpact(report)}`,
     `Skills: ${describeActiveSkills(report)}`,
     `Bootstrap: ${report.manualBootstrapReady ? `${report.bootstrapProfile} ready` : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
     `Next action: ${report.recommendedNextAction}`
@@ -434,6 +452,7 @@ function renderVerboseStatusReport(report: StatusReport): string {
     `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
     `Stage validation: ${describeStageValidation(report)}`,
     `Impact score: ${describeImpactScore(report.scoreDelta)}`,
+    `Hotspot impact: ${describeHotspotImpact(report)}`,
     `Bootstrap runtime: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
     `Bootstrap profile: ${report.bootstrapProfile}`,
     `Bootstrap prompt: ${report.bootstrapPrompt}`,

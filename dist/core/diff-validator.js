@@ -7,6 +7,13 @@ const BASELINE_SNAPSHOT_PATH = '.prodify/metrics/refactor-baseline.snapshot.json
 const TRACKED_PREFIXES = ['src/', 'tests/', 'assets/'];
 const TRACKED_FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.py', '.cs', '.css', '.scss', '.html']);
 const LAYER_DIRECTORY_NAMES = new Set(['application', 'domain', 'services', 'service', 'modules', 'module', 'adapters', 'infrastructure', 'core']);
+function stripCodeComments(content) {
+    return content
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/^\s*#.*$/gm, '')
+        .trim();
+}
 function isTrackedPath(relativePath) {
     const normalized = normalizeRepoRelativePath(relativePath);
     if (!TRACKED_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
@@ -123,21 +130,27 @@ export function diffSnapshots(before, after) {
     const addedPaths = [];
     const deletedPaths = [];
     const formattingOnlyPaths = [];
+    const commentOnlyPaths = [];
     let linesAdded = 0;
     let linesRemoved = 0;
+    let nonFormattingLinesAdded = 0;
+    let nonFormattingLinesRemoved = 0;
     const removedLineCounts = new Map();
     for (const relativePath of allPaths) {
         const beforeFile = beforeMap.get(relativePath);
         const afterFile = afterMap.get(relativePath);
         if (!beforeFile && afterFile) {
             addedPaths.push(relativePath);
-            linesAdded += afterFile.content.replace(/\r\n/g, '\n').split('\n').length;
+            const added = afterFile.content.replace(/\r\n/g, '\n').split('\n').length;
+            linesAdded += added;
+            nonFormattingLinesAdded += added;
             continue;
         }
         if (beforeFile && !afterFile) {
             deletedPaths.push(relativePath);
             const removed = beforeFile.content.replace(/\r\n/g, '\n').split('\n').length;
             linesRemoved += removed;
+            nonFormattingLinesRemoved += removed;
             removedLineCounts.set(relativePath, removed);
             continue;
         }
@@ -149,9 +162,15 @@ export function diffSnapshots(before, after) {
             formattingOnlyPaths.push(relativePath);
             continue;
         }
+        if (normalizeWhitespace(stripCodeComments(beforeFile.content)) === normalizeWhitespace(stripCodeComments(afterFile.content))) {
+            commentOnlyPaths.push(relativePath);
+            continue;
+        }
         const lineDiff = diffLines(beforeFile.content, afterFile.content);
         linesAdded += lineDiff.added;
         linesRemoved += lineDiff.removed;
+        nonFormattingLinesAdded += lineDiff.added;
+        nonFormattingLinesRemoved += lineDiff.removed;
         removedLineCounts.set(relativePath, lineDiff.removed);
     }
     return {
@@ -160,10 +179,13 @@ export function diffSnapshots(before, after) {
         filesDeleted: deletedPaths.length,
         linesAdded,
         linesRemoved,
+        nonFormattingLinesAdded,
+        nonFormattingLinesRemoved,
         modifiedPaths,
         addedPaths,
         deletedPaths,
         formattingOnlyPaths,
+        commentOnlyPaths,
         structuralChanges: detectStructuralChanges({
             addedPaths,
             modifiedPaths,

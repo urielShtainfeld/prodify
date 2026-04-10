@@ -61,7 +61,11 @@ test('baseline, final, and delta score artifacts are written under .prodify/metr
   assert.equal(typeof baseline.breakdown.structure, 'number');
   assert.equal(typeof final.signals.average_function_length, 'number');
   assert.equal(delta.delta, Number((final.total_score - baseline.total_score).toFixed(2)));
+  assert.equal(typeof delta.breakdown_delta.structure, 'number');
+  assert.ok(Array.isArray(delta.regressed_categories));
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'baseline.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'baseline.score.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'final.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'final.score.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'delta.json'));
 });
@@ -100,7 +104,9 @@ test('runtime state writes refresh baseline and final scoring artifacts automati
   finalState.runtime.last_validation_result = 'pass';
   await writeRuntimeState(repoRoot, finalState);
 
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'baseline.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'baseline.score.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'final.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'final.score.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'delta.json'));
 });

@@ -77,7 +77,7 @@ test('refactor validation enforces plan units, diff thresholds, and structural c
   const repoRoot = await createTempRepo();
   await execCli(repoRoot, ['init']);
   await fs.mkdir(path.join(repoRoot, 'src'), { recursive: true });
-  await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), `export function legacyFlow() {\n  const record = loadLegacy();\n  const normalized = normalizeLegacy(record);\n  const payload = buildLegacyPayload(normalized);\n  return payload;\n}\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), Array.from({ length: 90 }, (_, index) => `export const legacyLine${index} = ${index};`).join('\n') + '\n', 'utf8');
 
   const state = await readRuntimeState(repoRoot, {
     presetMetadata: {
@@ -97,7 +97,7 @@ test('refactor validation enforces plan units, diff thresholds, and structural c
   await writeRuntimeState(repoRoot, refactorState);
 
   await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '04-plan.md'), `# 04-plan\n\n## Policy Checks\n- Keep the plan deterministic and minimal.\n- Map every step back to a diagnosed issue or architecture rule.\n\n## Risks\n- low\n\n## Step Breakdown\n- Step ID: step-01-extract-service\n  - Description: extract service module from legacy flow.\n  - Files: src/legacy.ts, src/services/legacy-service.ts\n  - Risk: 2\n  - Validation: npm test\n\n## Success Criteria\n- The plan enumerates executable steps.\n- Verification is defined before refactoring starts.\n\n## Verification\n- npm test\n`, 'utf8');
-  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n- src/services/legacy-service.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-extract-service\n- Description: extract service module from legacy flow.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n- src/services/legacy-service.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-extract-service\n- Description: extract service module from legacy flow.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n- The refactor changes a high-value hotspot when hotspots are present.\n`, 'utf8');
 
   await fs.mkdir(path.join(repoRoot, 'src', 'services'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), `import { loadLegacyService } from './services/legacy-service.js';\n\nexport function legacyFlow() {\n  return loadLegacyService();\n}\n`, 'utf8');
@@ -114,6 +114,47 @@ test('refactor validation enforces plan units, diff thresholds, and structural c
   assert.equal(result.passed, true);
   assert.equal(result.diff_result?.filesAdded, 1);
   assert.match(result.diff_result?.structuralChanges.structural_change_flags.join(',') ?? '', /module-boundary-created/);
+  assert.match(result.refactor_impact_report?.hotspots_touched.join(',') ?? '', /src\/legacy\.ts/);
+});
+
+test('refactor validation rejects cosmetic-only changes', async () => {
+  const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['init']);
+  await fs.mkdir(path.join(repoRoot, 'src'), { recursive: true });
+  await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), `export function legacyFlow() {\n  return 1;\n}\n`, 'utf8');
+
+  const state = await readRuntimeState(repoRoot, {
+    presetMetadata: {
+      name: 'default',
+      version: '4.0.0',
+      schemaVersion: '4'
+    }
+  });
+
+  const refactorState = bootstrapFlowState(state, {
+    agent: 'codex',
+    mode: 'interactive'
+  });
+  refactorState.runtime.current_state = 'refactor_pending';
+  refactorState.runtime.current_stage = 'refactor';
+  refactorState.runtime.current_task_id = '05-refactor';
+  await writeRuntimeState(repoRoot, refactorState);
+
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '04-plan.md'), `# 04-plan\n\n## Policy Checks\n- Keep the plan deterministic and minimal.\n- Map every step back to a diagnosed issue or architecture rule.\n\n## Risks\n- low\n\n## Step Breakdown\n- Step ID: step-01-legacy-comment\n  - Description: touch legacy file.\n  - Files: src/legacy.ts\n  - Risk: 1\n  - Validation: npm test\n\n## Success Criteria\n- The plan enumerates executable steps.\n- Verification is defined before refactoring starts.\n\n## Verification\n- npm test\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-legacy-comment\n- Description: touch legacy file.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n- The refactor changes a high-value hotspot when hotspots are present.\n`, 'utf8');
+
+  await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), `// comment only\nexport function legacyFlow() {\n  return 1;\n}\n`, 'utf8');
+
+  const diffResult = await diffAgainstRefactorBaseline(repoRoot);
+  const result = await validateStageOutputs(repoRoot, {
+    contract: await loadCompiledContract(repoRoot, 'refactor'),
+    runtimeState: refactorState,
+    touchedPaths: ['src/legacy.ts', '.prodify/artifacts/05-refactor.md'],
+    diffResult
+  });
+
+  assert.equal(result.passed, false);
+  assert.match(result.violated_rules.map((issue) => issue.rule).join(','), /diff\/comment-only|diff\/cosmetic-only|diff\/minimum-non-formatting-lines-changed/);
 });
 
 test('validate stage fails when impact score delta is below the configured threshold', async () => {

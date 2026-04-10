@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import { detectHotspots } from './hotspots.js';
 import { listFilesRecursive, pathExists, writeFileEnsuringDir } from './fs.js';
 import { resolveRepoPath } from './paths.js';
 const REPO_CONTEXT_CACHE_SCHEMA_VERSION = '1';
@@ -57,7 +58,19 @@ function normalizeRepoContext(raw) {
         frameworks: normalizeList(record.frameworks),
         project_types: normalizeList(record.project_types),
         architecture_patterns: normalizeList(record.architecture_patterns),
-        risk_signals: normalizeList(record.risk_signals)
+        risk_signals: normalizeList(record.risk_signals),
+        hotspots: Array.isArray(record.hotspots)
+            ? record.hotspots
+                .map((entry) => asRecord(entry))
+                .filter((entry) => typeof entry.path === 'string' && typeof entry.score === 'number')
+                .map((entry) => ({
+                path: entry.path,
+                score: entry.score,
+                reasons: Array.isArray(entry.reasons) ? entry.reasons.filter((reason) => typeof reason === 'string') : [],
+                line_count: typeof entry.line_count === 'number' ? entry.line_count : 0,
+                import_count: typeof entry.import_count === 'number' ? entry.import_count : 0
+            }))
+            : []
     };
     const hasContent = snapshot.languages.length > 0
         || snapshot.frameworks.length > 0
@@ -69,7 +82,8 @@ function normalizeRepoContext(raw) {
         frameworks: [],
         project_types: [],
         architecture_patterns: [],
-        risk_signals: []
+        risk_signals: [],
+        hotspots: []
     };
 }
 async function buildRepoContextInputs(repoRoot) {
@@ -162,7 +176,8 @@ export async function detectRepoContext(repoRoot, options = {}) {
         frameworks,
         project_types: projectTypes,
         architecture_patterns: architecturePatterns,
-        risk_signals: riskSignals
+        risk_signals: riskSignals,
+        hotspots: await detectHotspots(repoRoot)
     };
     await writeRepoContextCache(repoRoot, cacheKey, snapshot);
     return snapshot;

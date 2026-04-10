@@ -1,305 +1,61 @@
 # AGENTS.md
 
-Repository note: this root file exists for contributors working on the Prodify source repository. It is not created or required by Prodify's default product lifecycle. The product runtime entrypoint remains `.prodify/AGENTS.md`.
+Repository note: this root file exists only for contributors working on the Prodify source repository. It is not created by `prodify init` and it is not part of the default product lifecycle.
 
-## 1. Purpose
+The product runtime entrypoints remain:
 
-This system defines a **deterministic execution protocol** for evolving a codebase to production-grade quality.
+- `.prodify/AGENTS.md` for the compact human pointer
+- `.prodify/runtime/bootstrap.json` for canonical machine-readable bootstrap state
+- `.prodify/state.json` for durable runtime state
 
-All behavior MUST follow this document.
-If any rule cannot be satisfied, execution MUST stop.
+## Purpose
 
----
+Use this repository to evolve the Prodify runtime itself.
 
-## 2. Execution Model
+When changing runtime behavior, keep the product story aligned with the current implementation:
 
-Execution is **state-driven** and **artifact-driven**.
+- `prodify init` creates `.prodify/`
+- the agent runs `$prodify-init`
+- `$prodify-init` bootstraps from `.prodify/runtime/bootstrap.json`
+- execution and resume flow from `.prodify/state.json`
+- stage validation is enforced by compiled contracts in `.prodify/contracts/*.contract.json`
 
-* State source: `.prodify/artifacts/run_state.json`
-* Outputs: `.prodify/artifacts/*.md`
-* Tasks: `.prodify/tasks/*.md`
-* Templates: `.prodify/templates/*.md`
-* Active stage artifacts use the numbered runtime filenames `01-understand.md` through `06-validate.md`
+## Contributor Rules
 
-No implicit state is allowed.
+- Treat root `AGENTS.md` as contributor-local guidance only.
+- Do not describe root `AGENTS.md` as a generated runtime file or as a required user entrypoint.
+- Keep the main product flow `.prodify`-first and agent-agnostic.
+- Keep machine-readable runtime truth in `.prodify/runtime/*.json`, `.prodify/state.json`, and `.prodify/contracts/*.contract.json`.
+- Keep `.prodify/AGENTS.md` short and pointer-oriented.
+- Preserve the default flow with no required root-level agent adapter files.
 
----
+## Legacy Model Removal
 
-## 3. Mandatory Task Pipeline
+The root guidance must not define or depend on the old task/template execution model.
 
-Tasks MUST execute in this exact order:
+Do not treat these as the canonical runtime control plane in the product story:
 
-```text
-01-understand → 02-diagnose → 03-architecture → 04-plan → 05-refactor → 06-validate
-```
+- `.prodify/artifacts/run_state.json`
+- `.prodify/artifacts/task_log.json`
+- `.prodify/tasks/*.md`
+- `.prodify/templates/*.md`
 
-### Violations
+Those files may still exist in this self-hosted repository for development history, testing, or migration context, but they are not the canonical runtime bootstrap or execution interface.
 
-Execution MUST stop if:
+## Runtime Files That Matter
 
-* a task is skipped
-* a required artifact is missing
-* a task is executed out of order
+When reasoning about the live runtime, prefer these files in this order:
 
----
+1. `.prodify/runtime/bootstrap.json`
+2. `.prodify/runtime/current-stage.json`
+3. `.prodify/state.json`
+4. `.prodify/contracts/*.contract.json`
+5. `.prodify/runtime-commands.md`
+6. `.prodify/AGENTS.md`
 
-## 4. Artifact Contract
+## Validation Expectations
 
-### 4.1 General Rules
-
-* Every task MUST:
-
-  * read declared inputs
-  * write exactly one primary artifact
-* All artifacts MUST:
-
-  * exist in `.prodify/artifacts/`
-  * follow the matching template exactly
-  * contain all required sections
-
-### 4.2 Validation
-
-An artifact is INVALID if:
-
-* a required section is missing
-* section structure deviates from template
-* content is empty without justification
-
-If artifact is invalid:
-
-* DO NOT continue
-* mark task as failed
-
----
-
-## 5. Task Execution Protocol
-
-For every task:
-
-### Step 1 — Input Verification
-
-* Verify all declared input artifacts exist
-* If missing → STOP
-
-### Step 2 — Load Context
-
-* Load artifacts
-* Extract only relevant structured data
-
-### Step 3 — Execute Task
-
-* Follow task instructions exactly
-* No deviation allowed
-
-### Step 4 — Output Write
-
-* Write artifact using template
-* Do not add extra sections
-
-### Step 5 — Output Validation
-
-* Compare artifact to template
-* If mismatch → FAIL
-
-### Step 6 — State Update
-
-* Update `run_state.json`
-* Append to `task_log.json`
-
----
-
-## 6. Refactor Constraints (Task 05)
-
-### 6.1 Scope
-
-* EXACTLY ONE step from `04-plan.md`
-* NO additional changes allowed
-
-### 6.2 Violations
-
-Execution MUST stop if:
-
-* multiple steps are executed
-* unrelated files are modified
-* behavior changes without being specified
-
----
-
-## 7. Validation Enforcement (Task 06)
-
-Task 06 MUST run after EVERY Task 05 execution.
-
-### 7.1 Fail Conditions
-
-Validation FAIL if:
-
-* any critical issue exists
-* regression detected
-* architecture rules violated
-
-### 7.2 Pass Conditions
-
-Validation PASS only if:
-
-* no critical issues
-* no regressions
-* structure improved
-
----
-
-## 8. Loop Control
-
-Execution loop:
-
-```text
-05-refactor → 06-validate → decision
-```
-
-### Rules
-
-* If FAIL → retry or repair the same selected step before continuing
-* If PASS → continue only if more steps remain; otherwise STOP
-* If no steps remain → STOP
-
----
-
-## 9. Prohibited Behavior
-
-The following are STRICTLY FORBIDDEN:
-
-* modifying code outside Task 05
-* skipping validation
-* generating artifacts without templates
-* adding undocumented fields
-* assuming file existence without verification
-* performing bulk rewrites
-* making implicit decisions
-
-Violation → IMMEDIATE STOP
-
----
-
-## 10. Required Behavior
-
-The system MUST:
-
-* use relative paths only
-* produce minimal diffs
-* preserve behavior unless explicitly required
-* justify all non-trivial decisions
-* operate only on verified data
-
----
-
-## 11. Data Integrity Rules
-
-* Artifacts are the ONLY source of truth
-* Do not rely on memory across tasks
-* Do not infer missing data
-* If data is incomplete → STOP
-
----
-
-## 12. Output Contract (MANDATORY)
-
-Every response MUST include:
-
-* task_id
-* inputs
-* actions performed
-* artifact written
-* code_modified: yes/no
-* next_task
-
-Missing fields → INVALID RESPONSE
-
----
-
-## 13. Failure Protocol
-
-If any rule is violated:
-
-1. STOP execution
-2. Do NOT proceed
-3. Return:
-
-```text
-STATE_BLOCK:
-status: failed
-task_id: <task>
-reason: <exact failure>
-blocking_artifact: <artifact or file>
-```
-
----
-
-## 14. State Model
-
-`run_state.json` MUST include:
-
-* current_task
-* last_completed_task
-* next_task
-* completed_step_ids
-* status
-
-If state is inconsistent → STOP
-
----
-
-## 15. Determinism Requirements
-
-Given the same:
-
-* repository
-* artifacts
-* templates
-
-The system MUST produce identical outputs.
-
-Non-deterministic behavior is a violation.
-
----
-
-## 16. Architecture Rules
-
-* Dependencies MUST NOT point outward from Domain
-* Mixed concerns MUST be flagged
-* Violations MUST be explicitly listed
-
----
-
-## 17. Completion Criteria
-
-Execution is complete ONLY when:
-
-* all required artifacts exist
-* validation passes
-* no remaining critical issues
-* no pending refactor steps
-
----
-
-## 18. Enforcement Priority
-
-If rules conflict, priority is:
-
-```text
-1. Artifact Contract
-2. Task Order
-3. Refactor Constraints
-4. Validation Rules
-5. Output Contract
-```
-
-Higher priority rules override lower ones.
-
----
-
-## 19. Zero-Assumption Policy
-
-* Never assume structure
-* Never assume intent
-* Never assume correctness
-
-Everything MUST be verified.
+- Runtime changes should keep bootstrap deterministic.
+- Status output should remain consumable in compact, verbose, and JSON forms.
+- Contract freshness, repo context, and skill-resolution caches should stay synchronized with canonical inputs.
+- Contributor-facing docs must not reintroduce the removed legacy runtime model.

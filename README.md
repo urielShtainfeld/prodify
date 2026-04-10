@@ -1,155 +1,82 @@
-# Prodify
 
-Prodify turns AI- and vibe-coded repositories into production-grade repositories through a deterministic, agent-native workflow.
+# 🚀 Prodify
 
-It gives a repo a repeatable upgrade path instead of relying on ad hoc prompting, one-off cleanup passes, or agent memory. The CLI bootstraps the runtime. The coding agent executes the staged transformation flow inside the repo.
+> A compiler that turns chaotic AI-generated code into production-grade systems
 
-## Why Prodify
+---
 
-- Turn messy AI-generated repos into structured, reviewable systems.
-- Keep runtime state, tasks, artifacts, contracts, and metrics inside `.prodify/`.
-- Separate repository setup from in-agent execution.
-- Validate stage outputs against compiled contracts instead of trusting freeform agent claims.
+## ⚡ TL;DR
 
-## Quick Start
+AI writes messy code → Prodify enforces structure → You get production-ready code (or it fails)
 
-Install Prodify from npm:
+---
 
-```sh
-npm install -g @urielsh/prodify
-```
+## 💡 What is Prodify?
 
-Prepare your coding agent once per machine:
+Prodify is a deterministic execution system that forces AI agents to:
 
-```sh
-prodify setup-agent codex
-```
+- understand your codebase
+- diagnose real issues
+- design architecture
+- execute refactors
+- validate improvements
+- measure impact
 
-Initialize a target repository:
+👉 No real change = FAIL
 
-```sh
-cd path/to/your-repo
+---
+
+## ⚙️ Usage
+
+### Setup (once)
+prodify setup-agent <agent>
+
+### Init repo
 prodify init
-```
 
-Then open your coding agent and start the runtime:
-
-```text
+### Run inside agent
 $prodify-init
 $prodify-execute
-```
 
-Use `$prodify-execute --auto` to continue without pausing between stages, or `$prodify-resume` to continue an interrupted run.
+👉 `$prodify-init` is the ONLY bootstrap step
 
-## Using Prodify In Your Repo
+---
 
-1. Install the npm package.
-2. Run `prodify setup-agent <agent>` once per machine for the agent you use.
-3. Run `prodify init` inside the repository you want to upgrade.
-4. Open that repository in a supported coding agent.
-5. Run `$prodify-init`.
-6. Continue with `$prodify-execute` or `$prodify-execute --auto`.
+## 🧠 Pipeline
 
-Repo initialization stays agent-agnostic. The active runtime is resolved when `$prodify-init` runs inside the opened agent, not when `prodify init` creates `.prodify/`.
+1. Understand  
+2. Diagnose  
+3. Architecture  
+4. Plan  
+5. Refactor  
+6. Validate  
 
-## How It Works
+---
 
-- `prodify init` creates the `.prodify/` runtime workspace in the repo.
-- `.prodify/runtime/bootstrap.json` is the canonical machine-readable bootstrap source.
-- `.prodify/AGENTS.md` is a compact human pointer, not the primary runtime input.
-- `$prodify-init` prepares the in-agent run state.
-- `$prodify-execute` runs one stage at a time.
-- `$prodify-execute --auto` keeps advancing until a hard stop.
-- `$prodify-resume` continues from the saved runtime state.
+## 💣 Enforcement
 
-Stage order:
+Refactor MUST change code  
+Validate MUST prove improvement  
 
-- `understand`
-- `diagnose`
-- `architecture`
-- `plan`
-- `refactor`
-- `validate`
+---
 
-## CLI Commands
+## 📊 Scoring
 
-- `prodify setup-agent <codex|claude|copilot|opencode>`
-  One-time machine setup for the coding agent runtime.
-- `prodify init`
-  Create the `.prodify/` workspace in a repository.
-- `prodify status`
-  Inspect runtime state and recommended next actions.
-- `prodify doctor`
-  Check runtime health, generated files, and execution readiness.
-- `prodify update`
-  Refresh the local Prodify workspace, compiled contracts, and related runtime assets.
+Baseline → Final → Delta  
 
-## Agent Runtime Commands
+---
 
-- `$prodify-init`
-  Bootstrap Prodify inside the opened coding agent.
-- `$prodify-execute`
-  Run the next workflow stage interactively.
-- `$prodify-execute --auto`
-  Continue across stages until a hard stop or policy gate.
-- `$prodify-resume`
-  Continue from the saved `.prodify/state.json` runtime state.
+## 🧱 Architecture
 
-## Repo Model
+.prodify/
+  contracts-src/
+  contracts/
+  artifacts/
+  metrics/
+  runtime/
 
-- `.prodify/` is the only required product-owned footprint.
-- Durable workflow state lives in `.prodify/state.json`.
-- Tasks live under `.prodify/tasks/`.
-- Stage outputs live under `.prodify/artifacts/`.
-- Skill definitions live under `.prodify/skills/`.
-- Local baseline, final, and delta scoring artifacts live under `.prodify/metrics/`.
-- No root-level agent files are required in the default product flow.
+---
 
-## Contracts And Validation
+## 🚀 One-liner
 
-- Humans edit contract sources under `.prodify/contracts-src/`.
-- Runtime execution reads only compiled contracts under `.prodify/contracts/`.
-- Stage completion is gated by compiled-contract validation.
-- Validation checks required artifacts, write boundaries, forbidden writes, Markdown sections, JSON keys, and contract criteria.
-
-## Local Scoring
-
-- Prodify can persist baseline, final, and delta score artifacts under `.prodify/metrics/`.
-- Raw outputs and normalized scores are stored separately so scoring stays traceable and deterministic.
-
-## Supported Agents
-
-- Codex
-- Claude
-- Copilot
-- OpenCode
-
-All supported agents share the same default bootstrap command: run `$prodify-init`. The `.prodify/AGENTS.md` file remains as a lightweight human pointer.
-
-## Development / Contributing
-
-Prodify users and Prodify contributors follow different entrypoints:
-
-- Product users normally initialize the runtime by running `$prodify-init` in the opened agent.
-- Contributors working on the Prodify source repository follow the root [AGENTS.md](/Users/urielsh/projects/prodify/AGENTS.md).
-
-In this repository, root `AGENTS.md` is repository-local contributor guidance. `.prodify/AGENTS.md` remains the pointer file for product users, while `.prodify/runtime/bootstrap.json` is the canonical machine input.
-
-For this self-hosting repository, the checked-in repo-root `.prodify/` directory is a development workspace for Prodify itself, not a byte-for-byte snapshot of fresh `prodify init` output.
-
-Run the source-repo test suite with:
-
-```sh
-npm test
-```
-
-The main implementation lives in:
-
-- `src/`
-- `assets/presets/default/`
-- `tests/`
-- `docs/`
-
-## License
-
-This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE).
+Prodify is a compiler for AI-driven development.

@@ -1,61 +1,95 @@
-# AGENTS.md
+# Repository Contributor Guidance
 
-Repository note: this root file exists only for contributors working on the Prodify source repository. It is not created by `prodify init` and it is not part of the default product lifecycle.
+This root `AGENTS.md` is **repository-local contributor guidance only**.
 
-The product runtime entrypoints remain:
+It is **not** the runtime bootstrap source used by Prodify during normal execution.
 
-- `.prodify/AGENTS.md` for the compact human pointer
-- `.prodify/runtime/bootstrap.json` for canonical machine-readable bootstrap state
-- `.prodify/state.json` for durable runtime state
+The actual runtime flow lives inside:
 
-## Purpose
+```text
+.prodify/
+```
 
-Use this repository to evolve the Prodify runtime itself.
+and is bootstrapped inside the agent through:
 
-When changing runtime behavior, keep the product story aligned with the current implementation:
+```text
+$prodify-init
+```
 
-- `prodify init` creates `.prodify/`
-- the agent runs `$prodify-init`
-- `$prodify-init` bootstraps from `.prodify/runtime/bootstrap.json`
-- execution and resume flow from `.prodify/state.json`
-- stage validation is enforced by compiled contracts in `.prodify/contracts/*.contract.json`
+---
 
-## Contributor Rules
+## What this file is for
 
-- Treat root `AGENTS.md` as contributor-local guidance only.
-- Do not describe root `AGENTS.md` as a generated runtime file or as a required user entrypoint.
-- Keep the main product flow `.prodify`-first and agent-agnostic.
-- Keep machine-readable runtime truth in `.prodify/runtime/*.json`, `.prodify/state.json`, and `.prodify/contracts/*.contract.json`.
-- Keep `.prodify/AGENTS.md` short and pointer-oriented.
-- Preserve the default flow with no required root-level agent adapter files.
+Use this file only as a lightweight contributor note for people working on the Prodify repository itself.
 
-## Legacy Model Removal
+It should not define an alternative execution model.
 
-The root guidance must not define or depend on the old task/template execution model.
+It should not redefine runtime state, task flow, or bootstrap behavior.
 
-Do not treat these as the canonical runtime control plane in the product story:
+---
 
-- `.prodify/artifacts/run_state.json`
-- `.prodify/artifacts/task_log.json`
-- `.prodify/tasks/*.md`
-- `.prodify/templates/*.md`
+## Source of truth for runtime behavior
 
-Those files may still exist in this self-hosted repository for development history, testing, or migration context, but they are not the canonical runtime bootstrap or execution interface.
+For actual Prodify runtime behavior, use these files instead:
 
-## Runtime Files That Matter
+```text
+.prodify/AGENTS.md
+.prodify/runtime/bootstrap.json
+.prodify/runtime/current-stage.json
+.prodify/state.json
+```
 
-When reasoning about the live runtime, prefer these files in this order:
+And for product-level documentation, use:
 
-1. `.prodify/runtime/bootstrap.json`
-2. `.prodify/runtime/current-stage.json`
-3. `.prodify/state.json`
-4. `.prodify/contracts/*.contract.json`
-5. `.prodify/runtime-commands.md`
-6. `.prodify/AGENTS.md`
+```text
+README.md
+```
 
-## Validation Expectations
+---
 
-- Runtime changes should keep bootstrap deterministic.
-- Status output should remain consumable in compact, verbose, and JSON forms.
-- Contract freshness, repo context, and skill-resolution caches should stay synchronized with canonical inputs.
-- Contributor-facing docs must not reintroduce the removed legacy runtime model.
+## Current repository expectations
+
+When changing the Prodify codebase:
+
+- keep `.prodify/` as the product-owned runtime footprint
+- keep repository init agent-agnostic
+- keep `$prodify-init` as the primary inside-agent bootstrap entrypoint
+- keep contracts authoritative
+- keep validators authoritative
+- keep scoring part of the regular workflow
+- avoid reintroducing legacy root-level agent-file generation
+
+---
+
+## Important guardrails
+
+Do not introduce or restore outdated runtime models such as:
+
+- manual bootstrap as the primary path
+- `install --agent` style repo-local compatibility generation
+- root-level agent files as product-required runtime files
+- alternate workflow state stored in ad hoc task/run files that conflict with `.prodify/state.json`
+
+If documentation or code suggests a second execution model, it should be corrected or removed.
+
+---
+
+## If you are updating runtime behavior
+
+When runtime flow changes, update the canonical sources together:
+
+- `README.md`
+- `.prodify/AGENTS.md`
+- `.prodify/runtime-commands.md`
+- runtime manifest/state generation logic
+- relevant tests
+
+This file should stay short and should not become a second runtime spec.
+
+---
+
+## One-line mental model
+
+Prodify runtime lives in `.prodify/`.
+
+This root file exists only to help contributors avoid reintroducing stale models.

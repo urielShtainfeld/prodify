@@ -3,6 +3,14 @@
   "version": "0.1.6",
   "license": "Apache-2.0",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/urielShtainfeld/prodify"
+  },
+  "homepage": "https://github.com/urielShtainfeld/prodify",
+  "bugs": {
+    "url": "https://github.com/urielShtainfeld/prodify/issues"
+  },
   "type": "module",
   "bin": {
     "prodify": "./dist/index.js"

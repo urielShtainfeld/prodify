@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 concurrency:
@@ -15,14 +15,12 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,7 +28,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org/
 
-      - name: Show tool versions
+      - name: Show versions
         run: |
           node --version
           npm --version
@@ -44,62 +42,52 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Read package info from repo
-        id: repo_pkg
+      - name: Read package info
+        id: pkg
         shell: bash
         run: |
           echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
-          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "repo_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
-      - name: Read latest published npm version
+      - name: Read latest npm version
         id: npm_pkg
         shell: bash
         run: |
-          NAME="${{ steps.repo_pkg.outputs.name }}"
-          VERSION="$(npm view "$NAME" version 2>/dev/null || echo "0.0.0")"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          VERSION="$(npm view "${{ steps.pkg.outputs.name }}" version 2>/dev/null || echo "0.0.0")"
+          echo "npm_version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Decide whether to auto-bump minor
+      - name: Decide publish version
         id: decide
         shell: bash
         run: |
-          REPO_VERSION="${{ steps.repo_pkg.outputs.version }}"
-          NPM_VERSION="${{ steps.npm_pkg.outputs.version }}"
+          REPO_VERSION="${{ steps.pkg.outputs.repo_version }}"
+          NPM_VERSION="${{ steps.npm_pkg.outputs.npm_version }}"
 
-          if [ "$REPO_VERSION" = "$NPM_VERSION" ]; then
-            echo "auto_bump=true" >> "$GITHUB_OUTPUT"
+          if [ "$REPO_VERSION" != "$NPM_VERSION" ]; then
+            echo "manual_version=true" >> "$GITHUB_OUTPUT"
             echo "publish_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
           else
-            echo "auto_bump=false" >> "$GITHUB_OUTPUT"
-            echo "publish_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
+            NEXT="$(node -e '
+              const [maj, min] = process.argv[1].split(".").map(Number);
+              console.log(`${maj}.${min + 1}.0`);
+            ' "$NPM_VERSION")"
+            echo "manual_version=false" >> "$GITHUB_OUTPUT"
+            echo "publish_version=$NEXT" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Auto-bump minor version
-        if: steps.decide.outputs.auto_bump == 'true'
-        id: bumped
+      - name: Set publish version locally
         shell: bash
         run: |
-          npm version minor --no-git-tag-version
-          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          npm version "${{ steps.decide.outputs.publish_version }}" --no-git-tag-version --allow-same-version
 
-      - name: Publish to npm with Trusted Publishing
+      - name: Publish with Trusted Publishing
         run: npm publish
-
-      - name: Commit auto-bumped version back to main
-        if: steps.decide.outputs.auto_bump == 'true'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json 2>/dev/null || git add package.json
-          git commit -m "chore: auto bump minor version [skip ci]"
-          git push
 
       - name: Summary
         shell: bash
         run: |
-          if [ "${{ steps.decide.outputs.auto_bump }}" = "true" ]; then
-            echo "Auto-bumped and published version: ${{ steps.bumped.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.decide.outputs.manual_version }}" = "true" ]; then
+            echo "Published manual version: ${{ steps.decide.outputs.publish_version }}" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Used manual repo version and published: ${{ steps.repo_pkg.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "Auto-bumped minor and published: ${{ steps.decide.outputs.publish_version }}" >> "$GITHUB_STEP_SUMMARY"
           fi

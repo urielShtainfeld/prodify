@@ -5,18 +5,12 @@
   "private": false,
   "repository": {
     "type": "git",
-    "url":  "https://github.com/urielShtainfeld/prodify"
-"repository": {
-    "type": "git",
     "url": "https://github.com/urielShtainfeld/prodify"
   },
   "homepage": "https://github.com/urielShtainfeld/prodify",
   "bugs": {
     "url": "https://github.com/urielShtainfeld/prodify/issues"
-  } "homepage": "https://github.com/urielShtainfeld/prodify",
-  "bugs": {
-    "url": "https://github.com/urielShtainfeld/prodify/issues"
-  }
+  },
   "type": "module",
   "bin": {
     "prodify": "./dist/index.js"

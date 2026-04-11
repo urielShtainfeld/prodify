@@ -92,14 +92,14 @@ Prodify is built to prevent no-op runs.
 
 ## 📊 Built-in Scoring
 
-Scoring is part of the normal workflow.
+Scoring is required in the normal workflow.
 
-Each run should include:
+A healthy run is expected to capture:
 
 ```text
-Baseline Score → Before execution
-Final Score    → After execution
-Delta          → Measurable improvement
+Baseline Score → When `$prodify-init` starts execution
+Final Score    → Before a successful run completes
+Delta          → Used in validation, status, and result interpretation
 ```
 
 Example:
@@ -111,6 +111,8 @@ Delta: +32
 ```
 
 Low or insignificant impact should not be treated as success.
+
+If score artifacts are missing during a normal run, `prodify status` and `prodify doctor` should flag the repository as degraded until the run is repaired.
 
 ---
 
@@ -207,8 +209,29 @@ Runtime should rely on:
 - one stage-local context pack
 - compiled contracts
 - cached repo/skill/freshness metadata
+- validators as execution gates
+- scoring artifacts and score thresholds as execution gates
 - compact artifact summaries where possible
 - `.prodify/skills/` for product-owned stage-bounded skills
+
+Optional extension surfaces such as `.prodify/tasks/`, `.prodify/rules/`, and `.prodify/templates/` can exist for repository-specific planning or overlays, but they are not primary runtime control inputs.
+
+Contracts remain the execution input, runtime manifests/context remain the execution control plane, and validators plus scoring remain the execution gates.
+
+---
+
+## 🪞 Fresh Init vs Self-Hosted Repo
+
+This repository keeps a checked-in root `.prodify/` because Prodify is self-hosting here.
+
+That workspace is not a byte-for-byte template for every new repository.
+
+| View | What you should expect | Why it exists |
+| --- | --- | --- |
+| Fresh `prodify init` repo | Core runtime files such as `.prodify/AGENTS.md`, `.prodify/runtime/`, `.prodify/contracts-src/`, `.prodify/contracts/`, `.prodify/state.json`, `.prodify/artifacts/`, `.prodify/metrics/`, `.prodify/skills/`, and lightweight optional extension directories like `.prodify/tasks/`, `.prodify/rules/`, and `.prodify/templates/`. | This is the default product model users bootstrap into their own repo. |
+| This Prodify repository | The same canonical runtime core plus checked-in development artifacts, historical notes, and repository-local task/rule/template content used to build Prodify itself. | This repo is the self-hosting development workspace for the product, not just a fresh-init sample. |
+
+If you are reading the checked-in `.prodify/` tree in this repository, treat it as a self-hosting/dev workspace layered on top of the generic runtime model.
 
 ---
 

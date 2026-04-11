@@ -335,6 +335,8 @@ export interface StatusReport {
   bootstrapProfile: RuntimeProfileName;
   bootstrapPrompt: string;
   stageSkillResolution: StageSkillResolution | null;
+  scoreBaseline: ScoreSnapshot | null;
+  scoreFinal: ScoreSnapshot | null;
   scoreDelta: ScoreDelta | null;
   recommendedNextAction: string;
   presetMetadata: VersionMetadata;

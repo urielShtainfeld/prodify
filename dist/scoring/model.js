@@ -144,6 +144,19 @@ export async function readScoreDelta(repoRoot) {
     }
     return JSON.parse(await fs.readFile(deltaPath, 'utf8'));
 }
+export async function readScoreSnapshot(repoRoot, kind) {
+    const canonicalPath = resolveRepoPath(repoRoot, `.prodify/metrics/${kind}.score.json`);
+    const aliasPath = resolveRepoPath(repoRoot, `.prodify/metrics/${kind}.json`);
+    const targetPath = await pathExists(canonicalPath)
+        ? canonicalPath
+        : await pathExists(aliasPath)
+            ? aliasPath
+            : null;
+    if (!targetPath) {
+        return null;
+    }
+    return JSON.parse(await fs.readFile(targetPath, 'utf8'));
+}
 export async function syncScoreArtifactsForRuntimeState(repoRoot, runtimeState) {
     if (runtimeState.runtime.current_state === 'bootstrapped' || runtimeState.runtime.current_state === 'understand_pending') {
         await writeScoreSnapshot(repoRoot, {

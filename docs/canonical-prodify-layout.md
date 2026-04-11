@@ -25,13 +25,13 @@ Define the current `.prodify`-first runtime layout and the boundary between gene
     README.md
   tasks/
     README.md
-    *.md
+    <optional repository-local planning aids>
   rules/
     README.md
-    *.md
+    <optional repository-local rule overlays>
   templates/
     README.md
-    *.template.md
+    <optional repository-local templates>
 ```
 
 Preset source files for Prodify itself live in the repository under `assets/presets/default/canonical/`. They are not copied into `.prodify/presets/` in the current product model.
@@ -50,9 +50,16 @@ Preset source files for Prodify itself live in the repository under `assets/pres
 | `.prodify/contracts/` | Compiled runtime contracts consumed by validation and execution. | Managed by runtime |
 | `.prodify/artifacts/` | Runtime stage outputs plus repo-local self-hosted design artifacts. | Mixed |
 | `.prodify/metrics/` | Local baseline, final, and delta score artifacts. | Managed by runtime |
-| `.prodify/tasks/` | Canonical task library authored by the repository owner. | Yes |
-| `.prodify/rules/` | Canonical reusable rules referenced by tasks and generated outputs. | Yes |
-| `.prodify/templates/` | Canonical markdown templates that define required artifact shapes. | Yes |
+| `.prodify/tasks/` | Optional repository-local planning aids or deterministic task overlays. Not an authoritative runtime execution source. | Yes |
+| `.prodify/rules/` | Optional repository-local rule overlays. Not part of the primary runtime control plane. | Yes |
+| `.prodify/templates/` | Optional repository-local templates. Not part of the primary runtime control plane. | Yes |
+
+## Fresh Init vs Self-Hosted Workspace
+
+| Workspace | Typical contents | Interpretation |
+| --- | --- | --- |
+| Fresh user repo after `prodify init` | Core runtime files plus lightweight optional extension directories such as `.prodify/tasks/README.md`, `.prodify/rules/README.md`, and `.prodify/templates/README.md`. | Default product bootstrap layout. |
+| This Prodify source repo | The same runtime core plus additional checked-in artifacts, rules, tasks, templates, and historical notes used to evolve Prodify itself. | Self-hosting development workspace, not a byte-for-byte fresh-init snapshot. |
 
 ## Canonical vs Generated Split
 

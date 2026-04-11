@@ -17,10 +17,13 @@ Define exactly what `prodify init` creates when bootstrapping Prodify in a repos
 - `.prodify/version.json`
 
 ### Directories
-- `.prodify/tasks/`
-- `.prodify/rules/`
-- `.prodify/templates/`
-- `.prodify/presets/`
+- `.prodify/contracts-src/`
+- `.prodify/contracts/`
+- `.prodify/artifacts/`
+- `.prodify/metrics/`
+- `.prodify/runtime/`
+- `.prodify/skills/`
+- optional extension surfaces such as `.prodify/tasks/`, `.prodify/rules/`, and `.prodify/templates/`
 
 ## Starter Contents
 
@@ -43,16 +46,18 @@ Define exactly what `prodify init` creates when bootstrapping Prodify in a repos
 - Open decisions
 
 ### `.prodify/tasks/`
-- `README.md` describing how canonical tasks are organized
-- no generated compatibility files
+- `README.md` describing repository-local task extensions or planning aids
+- not a primary runtime execution source
 
 ### `.prodify/rules/`
-- `README.md` describing reusable repository rules
+- `README.md` describing reusable repository overlays
 - optional starter rule files if the chosen preset includes them
+- not a primary runtime execution source
 
 ### `.prodify/templates/`
-- `README.md` describing canonical artifact templates
+- `README.md` describing repository-local template overlays
 - starter markdown templates if the chosen preset includes them
+- not a primary runtime execution source
 
 ### `.prodify/version.json`
 - `schema_version`

@@ -13,13 +13,18 @@ Define a health-check command for validating Prodify repository setup.
 - `.prodify/version.json` exists
 
 ### Canonical Structure
-- `.prodify/tasks/`, `.prodify/rules/`, and `.prodify/templates/` exist
-- required starter README files exist when expected
+- core runtime files and directories exist under `.prodify/`
+- optional extension surfaces, if present, keep their starter README files and remain clearly non-authoritative
 
 ### Compatibility Surface
 - managed compatibility files exist where expected for installed or detected targets
 - managed-file headers are valid
 - generated files still map to known compatibility targets
+
+### Scoring
+- before runtime bootstrap, doctor may report scoring as pending
+- after execution starts, the baseline score artifact should exist
+- after successful validation, final and delta score artifacts should exist
 
 ### Drift Detection
 - regenerate expected content in memory

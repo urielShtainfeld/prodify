@@ -8,3 +8,5 @@ It contains two kinds of content:
 - additional repo-local artifacts, rules, tasks, and templates used while developing Prodify
 
 Treat it as a real workspace, not as a second competing product model.
+
+It is not a byte-for-byte snapshot of what every fresh `prodify init` repository will contain.

@@ -185,6 +185,25 @@ export async function readScoreDelta(repoRoot: string): Promise<ScoreDelta | nul
   return JSON.parse(await fs.readFile(deltaPath, 'utf8')) as ScoreDelta;
 }
 
+export async function readScoreSnapshot(
+  repoRoot: string,
+  kind: ScoreSnapshotKind
+): Promise<ScoreSnapshot | null> {
+  const canonicalPath = resolveRepoPath(repoRoot, `.prodify/metrics/${kind}.score.json`);
+  const aliasPath = resolveRepoPath(repoRoot, `.prodify/metrics/${kind}.json`);
+  const targetPath = await pathExists(canonicalPath)
+    ? canonicalPath
+    : await pathExists(aliasPath)
+      ? aliasPath
+      : null;
+
+  if (!targetPath) {
+    return null;
+  }
+
+  return JSON.parse(await fs.readFile(targetPath, 'utf8')) as ScoreSnapshot;
+}
+
 export async function syncScoreArtifactsForRuntimeState(repoRoot: string, runtimeState: ProdifyState): Promise<void> {
   if (runtimeState.runtime.current_state === 'bootstrapped' || runtimeState.runtime.current_state === 'understand_pending') {
     await writeScoreSnapshot(repoRoot, {

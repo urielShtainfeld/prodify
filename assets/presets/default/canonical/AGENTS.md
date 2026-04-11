@@ -10,6 +10,7 @@ That command should bootstrap Prodify from `.prodify/runtime/bootstrap.json` and
 - `.prodify/runtime/bootstrap.json` is the canonical machine-readable bootstrap source.
 - `.prodify/runtime/current-stage.json` is the compact machine-readable stage context pack.
 - Humans edit `.prodify/contracts-src/`; runtime reads only `.prodify/contracts/*.contract.json`.
+- Baseline, final, and delta scoring artifacts are part of a normal successful run.
 - No root-level `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `.opencode/AGENTS.md` is required for the main flow.
 - Repository initialization remains agent-agnostic. The active agent is resolved when `$prodify-init` runs, not when `prodify init` creates `.prodify/`.
 - External CLI commands prepare and inspect the repo.
@@ -36,9 +37,14 @@ That command should bootstrap Prodify from `.prodify/runtime/bootstrap.json` and
 - `.prodify/skills/`
 - `.prodify/artifacts/`
 - `.prodify/metrics/`
-- `.prodify/tasks/`
 - `.prodify/state.json`
 - `.prodify/runtime-commands.md`
+
+## Optional Extension Surfaces
+
+- `.prodify/tasks/`, `.prodify/rules/`, and `.prodify/templates/` may exist as repository-local planning or extension aids.
+- They are not primary runtime control inputs.
+- Contracts, runtime manifests/context, validators, and scoring remain authoritative for execution.
 
 ## Stage Skill System
 

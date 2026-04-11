@@ -101,7 +101,7 @@ test('status becomes the primary user-facing summary after init', async () => {
   assert.match(result.stdout, /Health: healthy/);
   assert.match(result.stdout, /Contracts: 6 compiled, synchronized/);
   assert.match(result.stdout, /State: not bootstrapped/);
-  assert.match(result.stdout, /Impact: not available/);
+  assert.match(result.stdout, /Scoring: baseline pending until `\$prodify-init` starts execution/);
   assert.match(result.stdout, /Bootstrap: codex ready/);
   assert.match(result.stdout, /Next action: prodify setup-agent <agent>/);
 
@@ -117,10 +117,49 @@ test('status becomes the primary user-facing summary after init', async () => {
   assert.match(verbose.stdout, /Skills active: codebase-scanning/);
   assert.match(verbose.stdout, /Execution state: not bootstrapped/);
   assert.match(verbose.stdout, /Stage validation: not run yet/);
-  assert.match(verbose.stdout, /Impact score: not available/);
+  assert.match(verbose.stdout, /Scoring summary: baseline pending until `\$prodify-init` starts execution/);
   assert.match(verbose.stdout, /Bootstrap runtime: ready/);
   assert.match(verbose.stdout, /Bootstrap prompt: Open this repository in Codex and run `\$prodify-init`\./);
   assert.match(verbose.stdout, /Recommended next action: prodify setup-agent <agent>/);
+});
+
+test('status surfaces baseline, final, and delta by default when score artifacts are available', async () => {
+  const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['init']);
+
+  const initial = await readRuntimeState(repoRoot, {
+    presetMetadata: {
+      name: 'default',
+      version: '4.0.0',
+      schemaVersion: '4'
+    }
+  });
+  const bootstrapped = bootstrapFlowState(initial, {
+    agent: 'codex',
+    mode: 'interactive'
+  });
+  await writeRuntimeState(repoRoot, bootstrapped);
+
+  const finalState = startFlowExecution(bootstrapped);
+  finalState.runtime.current_state = 'validate_complete';
+  finalState.runtime.current_stage = 'validate';
+  finalState.runtime.current_task_id = '06-validate';
+  finalState.runtime.last_validation = {
+    stage: 'validate',
+    contract_version: '1.0.0',
+    passed: true,
+    violated_rules: [],
+    missing_artifacts: [],
+    warnings: [],
+    diagnostics: ['ok']
+  };
+  finalState.runtime.last_validation_result = 'pass';
+  await writeRuntimeState(repoRoot, finalState);
+
+  const result = await execCli(repoRoot, ['status']);
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /Scoring: baseline \d+(\.\d+)? -> final \d+(\.\d+)? \(delta /);
 });
 
 test('setup-agent configures a supported agent globally without repo-local writes', async () => {
@@ -171,7 +210,37 @@ test('doctor validates healthy setup after init', async () => {
   assert.match(result.stdout, /runtime\/state: PASS/);
   assert.match(result.stdout, /gitignore\/prodify: PASS/);
   assert.match(result.stdout, /bootstrap\/guidance: PASS/);
+  assert.match(result.stdout, /scoring\/artifacts: PASS - baseline\/final\/delta are captured during normal execution after `\$prodify-init`/);
   assert.doesNotMatch(result.stdout, /compatibility\//);
+});
+
+test('status and doctor flag missing score artifacts after execution has started', async () => {
+  const repoRoot = await createTempRepo();
+  await execCli(repoRoot, ['init']);
+
+  const initial = await readRuntimeState(repoRoot, {
+    presetMetadata: {
+      name: 'default',
+      version: '4.0.0',
+      schemaVersion: '4'
+    }
+  });
+  const bootstrapped = bootstrapFlowState(initial, {
+    agent: 'codex',
+    mode: 'interactive'
+  });
+  await writeRuntimeState(repoRoot, bootstrapped);
+
+  await fs.rm(path.join(repoRoot, '.prodify', 'metrics', 'baseline.score.json'));
+  await fs.rm(path.join(repoRoot, '.prodify', 'metrics', 'baseline.json'));
+
+  const status = await execCli(repoRoot, ['status']);
+  const doctor = await execCli(repoRoot, ['doctor']);
+
+  assert.equal(status.exitCode, 1);
+  assert.match(status.stdout, /Scoring: missing baseline score artifact after execution started/);
+  assert.equal(doctor.exitCode, 1);
+  assert.match(doctor.stdout, /scoring\/artifacts: FAIL - missing baseline score artifact after execution started/);
 });
 
 test('update is a no-op refresh on a current repo', async () => {
@@ -306,6 +375,7 @@ test('status distinguishes stage-validation failure from workspace health issues
     agent: 'codex',
     mode: 'interactive'
   });
+  await writeRuntimeState(repoRoot, bootstrapped);
   const running = startFlowExecution(bootstrapped);
   const failed = failFlowStage(running, {
     reason: 'Required artifact .prodify/artifacts/01-understand.md is missing.'
@@ -402,6 +472,10 @@ test('README and help output match the lifecycle model', async () => {
   assert.match(readme, /No root-level agent files are required/i);
   assert.match(readme, /Repo initialization stays agent-agnostic/i);
   assert.match(readme, /root `AGENTS\.md`.*repository-local contributor guidance/i);
+  assert.match(readme, /Scoring is required in the normal workflow/i);
+  assert.match(readme, /Optional extension surfaces such as `\.prodify\/tasks\/`, `\.prodify\/rules\/`, and `\.prodify\/templates\/`/);
+  assert.match(readme, /Fresh `prodify init` repo/);
+  assert.doesNotMatch(readme, /Tasks live under `?\.prodify\/tasks\/`?/i);
   assert.doesNotMatch(readme, /prodify install --agent/);
   assert.match(compatibilityTargets, /do not create root-level compatibility files/i);
   assert.match(codexSupport, /not part of the default lifecycle/i);

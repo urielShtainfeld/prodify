@@ -12,10 +12,11 @@ import { readRuntimeState, RUNTIME_STATUS } from './state.js';
 import { inspectVersionStatus } from './version-checks.js';
 import { buildBootstrapPrompt, hasManualBootstrapGuidance } from './prompt-builder.js';
 import { getRuntimeProfile } from './targets.js';
-import { readScoreDelta } from '../scoring/model.js';
+import { readScoreDelta, readScoreSnapshot } from '../scoring/model.js';
 import type {
   RuntimeProfileName,
   ScoreDelta,
+  ScoreSnapshot,
   RuntimeStateBlock,
   StatusReport,
   VersionInspection,
@@ -52,6 +53,10 @@ function describeWorkspaceHealth(report: StatusReport): string {
   }
   if (!report.manualBootstrapReady) {
     issues.push('bootstrap runtime incomplete');
+  }
+  const missingScoringArtifacts = getMissingRequiredScoringArtifacts(report);
+  if (missingScoringArtifacts.length > 0) {
+    issues.push(`scoring: missing ${joinLabels(missingScoringArtifacts)}`);
   }
 
   return issues.length === 0 ? 'healthy' : `repair required (${issues.join('; ')})`;
@@ -166,17 +171,90 @@ function describeStageValidation(report: StatusReport): string {
     : `failed at ${runtime.last_validation.stage}`;
 }
 
-function describeImpactScore(scoreDelta: ScoreDelta | null): string {
-  if (!scoreDelta) {
-    return 'not available';
+function runtimeHasStarted(runtime: RuntimeStateBlock | null): boolean {
+  return Boolean(runtime && runtime.current_state !== 'not_bootstrapped');
+}
+
+function runtimeRequiresFinalScores(runtime: RuntimeStateBlock | null): boolean {
+  if (!runtime) {
+    return false;
   }
 
-  const threshold = scoreDelta.min_impact_score !== undefined ? `, threshold=${scoreDelta.min_impact_score}` : '';
-  const verdict = scoreDelta.passed === undefined ? '' : `, passed=${scoreDelta.passed}`;
-  const regressions = scoreDelta.regressed_categories.length > 0
-    ? `, regressed=${scoreDelta.regressed_categories.join('/')}`
-    : '';
-  return `${scoreDelta.baseline_score} -> ${scoreDelta.final_score} (delta ${scoreDelta.delta}${threshold}${verdict}${regressions})`;
+  return runtime.current_state === 'validate_complete'
+    || runtime.current_state === 'completed'
+    || runtime.last_validation_result === 'pass';
+}
+
+function joinLabels(labels: string[]): string {
+  if (labels.length <= 1) {
+    return labels[0] ?? '';
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+function describeScoring(report: StatusReport): string {
+  const runtime = report.runtimeState?.runtime ?? null;
+  if (report.scoreDelta) {
+    const threshold = report.scoreDelta.min_impact_score !== undefined ? `, threshold=${report.scoreDelta.min_impact_score}` : '';
+    const verdict = report.scoreDelta.passed === undefined ? '' : `, passed=${report.scoreDelta.passed}`;
+    const regressions = report.scoreDelta.regressed_categories.length > 0
+      ? `, regressed=${report.scoreDelta.regressed_categories.join('/')}`
+      : '';
+    return `baseline ${report.scoreDelta.baseline_score} -> final ${report.scoreDelta.final_score} (delta ${report.scoreDelta.delta}${threshold}${verdict}${regressions})`;
+  }
+
+  if (!runtimeHasStarted(runtime)) {
+    return 'baseline pending until `$prodify-init` starts execution';
+  }
+
+  if (!report.scoreBaseline) {
+    return 'missing baseline score artifact after execution started';
+  }
+
+  if (runtimeRequiresFinalScores(runtime)) {
+    const missingArtifacts: string[] = [];
+    if (!report.scoreFinal) {
+      missingArtifacts.push('final');
+    }
+    if (!report.scoreDelta) {
+      missingArtifacts.push('delta');
+    }
+    if (missingArtifacts.length > 0) {
+      return `missing ${joinLabels(missingArtifacts)} score artifact${missingArtifacts.length > 1 ? 's' : ''} after successful validation`;
+    }
+  }
+
+  if (!report.scoreFinal) {
+    return `baseline ${report.scoreBaseline.total_score} captured; final and delta pending`;
+  }
+
+  return `baseline ${report.scoreBaseline.total_score} -> final ${report.scoreFinal.total_score} (delta pending)`;
+}
+
+function getMissingRequiredScoringArtifacts(report: StatusReport): string[] {
+  const runtime = report.runtimeState?.runtime ?? null;
+  if (!runtimeHasStarted(runtime)) {
+    return [];
+  }
+
+  const missingArtifacts: string[] = [];
+  if (!report.scoreBaseline) {
+    missingArtifacts.push('baseline');
+  }
+  if (runtimeRequiresFinalScores(runtime)) {
+    if (!report.scoreFinal) {
+      missingArtifacts.push('final');
+    }
+    if (!report.scoreDelta) {
+      missingArtifacts.push('delta');
+    }
+  }
+
+  return missingArtifacts;
 }
 
 function describeHotspotImpact(report: StatusReport): string {
@@ -291,6 +369,8 @@ export async function inspectRepositoryStatus(
       bootstrapProfile,
       bootstrapPrompt,
       stageSkillResolution: null,
+      scoreBaseline: null,
+      scoreFinal: null,
       scoreDelta: null,
       recommendedNextAction: 'prodify init',
       presetMetadata: preset.metadata
@@ -309,6 +389,8 @@ export async function inspectRepositoryStatus(
   let runtimeState = null;
   let runtimeStateError = null;
   let stageSkillResolution = null;
+  let scoreBaseline: ScoreSnapshot | null = null;
+  let scoreFinal: ScoreSnapshot | null = null;
   let scoreDelta = null;
 
   try {
@@ -320,6 +402,8 @@ export async function inspectRepositoryStatus(
   }
 
   const manualBootstrapReady = await checkBootstrapReadiness(repoRoot);
+  scoreBaseline = await readScoreSnapshot(repoRoot, 'baseline');
+  scoreFinal = await readScoreSnapshot(repoRoot, 'final');
   scoreDelta = await readScoreDelta(repoRoot);
   const canonicalOk = missingPaths.length === 0;
   if (canonicalOk && contractInventory.ok) {
@@ -335,15 +419,8 @@ export async function inspectRepositoryStatus(
   };
   const stageValidationFailed = runtimeState?.runtime.current_state === 'failed'
     || runtimeState?.runtime.last_validation_result === 'fail';
-
-  return {
-    ok: initialized
-      && canonicalOk
-      && contractInventory.ok
-      && versionStatus.status === 'current'
-      && !runtimeStateError
-      && manualBootstrapReady
-      && !stageValidationFailed,
+  const missingRequiredScoringArtifacts = getMissingRequiredScoringArtifacts({
+    ok: false,
     initialized,
     canonicalOk,
     canonicalMissing: missingPaths,
@@ -358,6 +435,38 @@ export async function inspectRepositoryStatus(
     bootstrapProfile,
     bootstrapPrompt,
     stageSkillResolution,
+    scoreBaseline,
+    scoreFinal,
+    scoreDelta,
+    recommendedNextAction: '',
+    presetMetadata: preset.metadata
+  });
+
+  return {
+    ok: initialized
+      && canonicalOk
+      && contractInventory.ok
+      && versionStatus.status === 'current'
+      && !runtimeStateError
+      && manualBootstrapReady
+      && !stageValidationFailed
+      && missingRequiredScoringArtifacts.length === 0,
+    initialized,
+    canonicalOk,
+    canonicalMissing: missingPaths,
+    contractsOk: contractInventory.ok,
+    contractInventory,
+    versionStatus,
+    configuredAgents,
+    runtimeState,
+    runtimeStateError,
+    resumable: resume.resumable,
+    manualBootstrapReady,
+    bootstrapProfile,
+    bootstrapPrompt,
+    stageSkillResolution,
+    scoreBaseline,
+    scoreFinal,
     scoreDelta,
     recommendedNextAction: deriveNextAction({
       initialized,
@@ -391,8 +500,11 @@ function buildStatusJson(report: StatusReport): Record<string, unknown> {
     execution_state: describeRuntime(report.runtimeState?.runtime ?? null),
     validation: describeStageValidation(report),
     scoring: {
-      summary: describeImpactScore(report.scoreDelta),
-      delta: report.scoreDelta
+      summary: describeScoring(report),
+      baseline: report.scoreBaseline,
+      final: report.scoreFinal,
+      delta: report.scoreDelta,
+      required_artifacts_missing: getMissingRequiredScoringArtifacts(report)
     },
     hotspots: {
       summary: describeHotspotImpact(report),
@@ -422,7 +534,7 @@ function renderCompactStatusReport(report: StatusReport): string {
     `Contracts: ${describeContractFreshness(report)}`,
     `State: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
     `Validation: ${describeStageValidation(report)}`,
-    `Impact: ${describeImpactScore(report.scoreDelta)}`,
+    `Scoring: ${describeScoring(report)}`,
     `Hotspots: ${describeHotspotImpact(report)}`,
     `Skills: ${describeActiveSkills(report)}`,
     `Bootstrap: ${report.manualBootstrapReady ? `${report.bootstrapProfile} ready` : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
@@ -451,7 +563,7 @@ function renderVerboseStatusReport(report: StatusReport): string {
     `Skills active: ${describeActiveSkills(report)}`,
     `Execution state: ${describeRuntime(report.runtimeState?.runtime ?? null)}`,
     `Stage validation: ${describeStageValidation(report)}`,
-    `Impact score: ${describeImpactScore(report.scoreDelta)}`,
+    `Scoring summary: ${describeScoring(report)}`,
     `Hotspot impact: ${describeHotspotImpact(report)}`,
     `Bootstrap runtime: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
     `Bootstrap profile: ${report.bootstrapProfile}`,

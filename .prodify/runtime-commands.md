@@ -17,6 +17,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
   - read `.prodify/runtime/bootstrap.json`
   - detect or resolve the active agent/runtime mode
   - initialize `.prodify/state.json`
+  - capture the baseline score snapshot for the normal execution run
   - prepare the bootstrapped state and the `understand` contract without locking the repo to one agent
 
 - `$prodify-execute`
@@ -24,6 +25,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
   - consume the compact iteration and delta runtime files
   - write stage artifacts under `.prodify/artifacts/`
   - validate the stage against the compiled contract JSON
+  - keep scoring and validation aligned with the current stage outcome
   - update runtime state after the validation result
   - pause for validation checkpoints between stages in interactive mode
 
@@ -35,6 +37,7 @@ If this machine has not been prepared for that agent yet, run `prodify setup-age
   - continue from `.prodify/state.json`
   - reuse the compact iteration and delta runtime files
   - preserve validation checkpoints
+  - expect final score and delta artifacts before a successful run closes
   - fail clearly if the state is corrupt or non-resumable
 
 ## Supported Runtime Profiles

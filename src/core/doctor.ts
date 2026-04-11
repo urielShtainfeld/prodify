@@ -8,7 +8,8 @@ import { loadDefaultPreset } from '../presets/loader.js';
 import { parseVersionMetadata } from '../presets/version.js';
 import { hasManualBootstrapGuidance } from './prompt-builder.js';
 import { inspectCompiledContracts } from '../contracts/freshness.js';
-import type { DoctorCheck, DoctorResult } from '../types.js';
+import { readScoreDelta, readScoreSnapshot } from '../scoring/model.js';
+import type { DoctorCheck, DoctorResult, ProdifyState } from '../types.js';
 
 function isProdifyDirectoryIgnore(pattern: string): boolean {
   const trimmed = pattern.trim();
@@ -69,6 +70,87 @@ async function inspectBootstrapGuidance(repoRoot: string): Promise<DoctorCheck> 
     details: hasManualBootstrapGuidance(guidance)
       ? 'bootstrap pointer and runtime manifest are present'
       : '.prodify/AGENTS.md does not point to the canonical bootstrap runtime'
+  };
+}
+
+function scoringHasStarted(runtimeState: ProdifyState | null): boolean {
+  return Boolean(runtimeState && runtimeState.runtime.current_state !== 'not_bootstrapped');
+}
+
+function scoringShouldBeComplete(runtimeState: ProdifyState | null): boolean {
+  if (!runtimeState) {
+    return false;
+  }
+
+  return runtimeState.runtime.current_state === 'validate_complete'
+    || runtimeState.runtime.current_state === 'completed'
+    || runtimeState.runtime.last_validation_result === 'pass';
+}
+
+function joinLabels(labels: string[]): string {
+  if (labels.length <= 1) {
+    return labels[0] ?? '';
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+async function inspectScoringArtifacts(repoRoot: string, runtimeState: ProdifyState | null): Promise<DoctorCheck> {
+  if (!runtimeState) {
+    return {
+      label: 'scoring/artifacts',
+      ok: true,
+      skipped: true,
+      details: 'runtime state unavailable; scoring expectations could not be verified'
+    };
+  }
+
+  const baseline = await readScoreSnapshot(repoRoot, 'baseline');
+  const final = await readScoreSnapshot(repoRoot, 'final');
+  const delta = await readScoreDelta(repoRoot);
+
+  if (!scoringHasStarted(runtimeState)) {
+    return {
+      label: 'scoring/artifacts',
+      ok: true,
+      details: 'baseline/final/delta are captured during normal execution after `$prodify-init`'
+    };
+  }
+
+  if (!baseline) {
+    return {
+      label: 'scoring/artifacts',
+      ok: false,
+      details: 'missing baseline score artifact after execution started'
+    };
+  }
+
+  if (scoringShouldBeComplete(runtimeState)) {
+    const missingArtifacts: string[] = [];
+    if (!final) {
+      missingArtifacts.push('final');
+    }
+    if (!delta) {
+      missingArtifacts.push('delta');
+    }
+    if (missingArtifacts.length > 0) {
+      return {
+        label: 'scoring/artifacts',
+        ok: false,
+        details: `missing ${joinLabels(missingArtifacts)} score artifact${missingArtifacts.length > 1 ? 's' : ''} after successful validation`
+      };
+    }
+  }
+
+  return {
+    label: 'scoring/artifacts',
+    ok: true,
+    details: delta
+      ? `baseline/final/delta present (${delta.baseline_score} -> ${delta.final_score}, delta ${delta.delta})`
+      : 'baseline present; final and delta will be captured after successful validation'
   };
 }
 
@@ -152,8 +234,9 @@ export async function runDoctor(repoRoot: string): Promise<DoctorResult> {
       : `version status is ${versionStatus.status}`
   });
 
+  let runtimeState: ProdifyState | null = null;
   try {
-    await readRuntimeState(repoRoot, {
+    runtimeState = await readRuntimeState(repoRoot, {
       presetMetadata: preset.metadata
     });
     checks.push({
@@ -171,6 +254,7 @@ export async function runDoctor(repoRoot: string): Promise<DoctorResult> {
 
   checks.push(await inspectGitignore(repoRoot));
   checks.push(await inspectBootstrapGuidance(repoRoot));
+  checks.push(await inspectScoringArtifacts(repoRoot, runtimeState));
 
   return {
     ok: checks.every((check) => check.ok || check.skipped === true),

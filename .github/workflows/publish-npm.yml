@@ -60,20 +60,54 @@ jobs:
         id: decide
         shell: bash
         run: |
-          REPO_VERSION="${{ steps.pkg.outputs.repo_version }}"
-          NPM_VERSION="${{ steps.npm_pkg.outputs.npm_version }}"
+          node - <<'EOF'
+          const fs = require('fs');
 
-          if [ "$REPO_VERSION" != "$NPM_VERSION" ]; then
-            echo "manual_version=true" >> "$GITHUB_OUTPUT"
-            echo "publish_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
-          else
-            NEXT="$(node -e '
-              const [maj, min] = process.argv[1].split(".").map(Number);
-              console.log(`${maj}.${min + 1}.0`);
-            ' "$NPM_VERSION")"
-            echo "manual_version=false" >> "$GITHUB_OUTPUT"
-            echo "publish_version=$NEXT" >> "$GITHUB_OUTPUT"
-          fi
+          const repo = process.env.REPO_VERSION;
+          const npmv = process.env.NPM_VERSION;
+          const out = process.env.GITHUB_OUTPUT;
+
+          function parse(v) {
+            const parts = v.split('.').map(Number);
+            if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) {
+              throw new Error(`Invalid semver: ${v}`);
+            }
+            return parts;
+          }
+
+          function cmp(a, b) {
+            const pa = parse(a);
+            const pb = parse(b);
+            for (let i = 0; i < 3; i++) {
+              if (pa[i] > pb[i]) return 1;
+              if (pa[i] < pb[i]) return -1;
+            }
+            return 0;
+          }
+
+          function nextMinor(v) {
+            const [maj, min] = parse(v);
+            return `${maj}.${min + 1}.0`;
+          }
+
+          const comparison = cmp(repo, npmv);
+
+          let manualVersion = 'false';
+          let publishVersion;
+
+          if (comparison > 0) {
+            manualVersion = 'true';
+            publishVersion = repo;
+          } else {
+            publishVersion = nextMinor(npmv);
+          }
+
+          fs.appendFileSync(out, `manual_version=${manualVersion}\n`);
+          fs.appendFileSync(out, `publish_version=${publishVersion}\n`);
+          EOF
+        env:
+          REPO_VERSION: ${{ steps.pkg.outputs.repo_version }}
+          NPM_VERSION: ${{ steps.npm_pkg.outputs.npm_version }}
 
       - name: Set publish version locally
         shell: bash

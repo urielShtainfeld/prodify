@@ -7,67 +7,99 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: 22
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
           registry-url: https://registry.npmjs.org/
 
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
-
-      # Get current repo version
-      - name: Read repo version
-        id: repo_version
+      - name: Show tool versions
         run: |
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          node --version
+          npm --version
 
-      # Get latest npm version
-      - name: Read npm version
-        id: npm_version
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Read package info from repo
+        id: repo_pkg
+        shell: bash
         run: |
-          VERSION=$(npm view $(node -p "require('./package.json').name") version || echo "0.0.0")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
-      # Decide version bump
-      - name: Decide version
+      - name: Read latest published npm version
+        id: npm_pkg
+        shell: bash
+        run: |
+          NAME="${{ steps.repo_pkg.outputs.name }}"
+          VERSION="$(npm view "$NAME" version 2>/dev/null || echo "0.0.0")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to auto-bump minor
         id: decide
+        shell: bash
         run: |
-          REPO=${{ steps.repo_version.outputs.version }}
-          NPM=${{ steps.npm_version.outputs.version }}
+          REPO_VERSION="${{ steps.repo_pkg.outputs.version }}"
+          NPM_VERSION="${{ steps.npm_pkg.outputs.version }}"
 
-          if [ "$REPO" != "$NPM" ]; then
-            echo "use_repo_version=true" >> $GITHUB_OUTPUT
+          if [ "$REPO_VERSION" = "$NPM_VERSION" ]; then
+            echo "auto_bump=true" >> "$GITHUB_OUTPUT"
+            echo "publish_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
           else
-            echo "use_repo_version=false" >> $GITHUB_OUTPUT
+            echo "auto_bump=false" >> "$GITHUB_OUTPUT"
+            echo "publish_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
           fi
 
-      # Auto bump minor ONLY if user didn't change version
-      - name: Bump minor
-        if: steps.decide.outputs.use_repo_version == 'false'
+      - name: Auto-bump minor version
+        if: steps.decide.outputs.auto_bump == 'true'
+        id: bumped
+        shell: bash
         run: |
           npm version minor --no-git-tag-version
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
-      # Publish
-      - name: Publish
-        run: npm publish --access public
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm with Trusted Publishing
+        run: npm publish
 
-      # Commit version back (only if auto bumped)
-      - name: Commit version bump
-        if: steps.decide.outputs.use_repo_version == 'false'
+      - name: Commit auto-bumped version back to main
+        if: steps.decide.outputs.auto_bump == 'true'
+        shell: bash
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add package.json package-lock.json || true
-          git commit -m "chore: auto bump minor version"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json 2>/dev/null || git add package.json
+          git commit -m "chore: auto bump minor version [skip ci]"
           git push
+
+      - name: Summary
+        shell: bash
+        run: |
+          if [ "${{ steps.decide.outputs.auto_bump }}" = "true" ]; then
+            echo "Auto-bumped and published version: ${{ steps.bumped.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Used manual repo version and published: ${{ steps.repo_pkg.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          fi

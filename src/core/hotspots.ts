@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { listFilesRecursive } from './fs.js';
 import { normalizeRepoRelativePath, resolveRepoPath } from './paths.js';
-import type { HotspotImprovement, HotspotRecord } from '../types.js';
+import type { HotspotImprovement, HotspotMetricsSummary, HotspotRecord } from '../types.js';
 
 interface SnapshotLike {
   files: Array<{
@@ -126,7 +126,7 @@ export function detectHotspotsFromSnapshot(snapshot: SnapshotLike, options: { li
 }
 
 export async function evaluateHotspotImprovements(
-  repoRoot: string,
+  _repoRoot: string,
   {
     before,
     after,
@@ -148,10 +148,32 @@ export async function evaluateHotspotImprovements(
         path: entry.path,
         hotspot_score_before: entry.score,
         hotspot_score_after: afterEntry?.score ?? 0,
+        score_delta: (afterEntry?.score ?? 0) - entry.score,
         line_delta: (afterEntry?.line_count ?? 0) - entry.line_count,
         import_delta: (afterEntry?.import_count ?? 0) - entry.import_count,
-        improved: (afterEntry?.score ?? 0) < entry.score
+        improved: (afterEntry?.score ?? 0) < entry.score,
+        pressure_reduced: (afterEntry?.score ?? 0) < entry.score
+          || (afterEntry?.line_count ?? 0) < entry.line_count
+          || (afterEntry?.import_count ?? 0) < entry.import_count
       };
     })
     .sort((left, right) => left.path.localeCompare(right.path));
+}
+
+export function summarizeHotspotMetrics(
+  before: HotspotRecord[],
+  after: HotspotRecord[],
+  improvements: HotspotImprovement[]
+): HotspotMetricsSummary {
+  return {
+    hotspots_before: before.length,
+    hotspots_after: after.length,
+    targeted_hotspots: improvements.length,
+    improved_hotspots: improvements.filter((entry) => entry.improved).length,
+    total_score_before: before.reduce((sum, entry) => sum + entry.score, 0),
+    total_score_after: after.reduce((sum, entry) => sum + entry.score, 0),
+    total_score_delta: after.reduce((sum, entry) => sum + entry.score, 0) - before.reduce((sum, entry) => sum + entry.score, 0),
+    reduced_line_count: improvements.reduce((sum, entry) => sum + Math.max(0, -1 * entry.line_delta), 0),
+    reduced_import_count: improvements.reduce((sum, entry) => sum + Math.max(0, -1 * entry.import_delta), 0)
+  };
 }

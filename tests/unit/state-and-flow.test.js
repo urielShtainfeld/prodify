@@ -23,6 +23,28 @@ function passingValidation(stage) {
   };
 }
 
+function failingValidation(stage, rules = ['diff/minimum-lines-changed']) {
+  return {
+    stage,
+    contract_version: '1.0.0',
+    passed: false,
+    violated_rules: rules.map((rule) => ({
+      rule,
+      message: rule,
+      path: undefined
+    })),
+    missing_artifacts: [],
+    warnings: [],
+    diagnostics: ['retry'],
+    unmet_requirements: rules.map((rule) => ({
+      rule,
+      message: rule,
+      path: undefined
+    })),
+    enforcement_action: 'retry'
+  };
+}
+
 test('runtime bootstrap initializes the bootstrapped checkpoint deterministically', () => {
   const state = createInitialRuntimeState({ presetMetadata });
   const bootstrapped = bootstrapFlowState(state, {
@@ -99,6 +121,63 @@ test('failed validation produces a non-resumable failed checkpoint', () => {
   assert.equal(failed.runtime.current_state, 'failed');
   assert.equal(failed.runtime.resumable, false);
   assert.equal(getResumeDecision(failed).resumable, false);
+});
+
+test('refactor failures enter a resumable enforcement loop before hard stop', () => {
+  const state = createInitialRuntimeState({ presetMetadata });
+  const bootstrapped = bootstrapFlowState(state, {
+    agent: 'codex',
+    mode: 'interactive'
+  });
+  const running = startFlowExecution(bootstrapped);
+  running.runtime.current_stage = 'refactor';
+  running.runtime.current_state = 'refactor_pending';
+  running.runtime.current_task_id = '05-refactor';
+
+  const blocked = failFlowStage(running, {
+    reason: 'diff too weak',
+    validation: failingValidation('refactor')
+  });
+
+  assert.equal(blocked.runtime.current_state, 'blocked');
+  assert.equal(blocked.runtime.resumable, true);
+  assert.equal(blocked.runtime.enforcement_loop.stage, 'refactor');
+  assert.equal(blocked.runtime.enforcement_loop.retry_count, 1);
+  assert.equal(getResumeDecision(blocked).command, '$prodify-execute');
+
+  const retried = startFlowExecution(blocked);
+  assert.equal(retried.runtime.current_state, 'refactor_pending');
+  assert.equal(retried.runtime.current_stage, 'refactor');
+});
+
+test('repeated enforcement failures eventually hard-stop the runtime', () => {
+  const state = createInitialRuntimeState({ presetMetadata });
+  const bootstrapped = bootstrapFlowState(state, {
+    agent: 'codex',
+    mode: 'interactive'
+  });
+  const running = startFlowExecution(bootstrapped);
+  running.runtime.current_stage = 'validate';
+  running.runtime.current_state = 'validate_pending';
+  running.runtime.current_task_id = '06-validate';
+
+  const first = failFlowStage(running, {
+    reason: 'score delta too low',
+    validation: failingValidation('validate', ['impact-score/minimum-threshold'])
+  });
+  const second = failFlowStage(startFlowExecution(first), {
+    reason: 'score delta too low',
+    validation: failingValidation('validate', ['impact-score/minimum-threshold'])
+  });
+  const third = failFlowStage(startFlowExecution(second), {
+    reason: 'score delta too low',
+    validation: failingValidation('validate', ['impact-score/minimum-threshold'])
+  });
+
+  assert.equal(third.runtime.current_state, 'failed');
+  assert.equal(third.runtime.resumable, false);
+  assert.equal(third.runtime.enforcement_loop.retry_count, 3);
+  assert.equal(third.runtime.enforcement_loop.can_retry, false);
 });
 
 test('prompt builder includes runtime commands and current contract checkpoint context', () => {

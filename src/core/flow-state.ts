@@ -11,6 +11,7 @@ import type {
 } from '../types.js';
 
 export const STAGE_ORDER: FlowStage[] = ['understand', 'diagnose', 'architecture', 'plan', 'refactor', 'validate'];
+export const ENFORCEMENT_RETRY_LIMIT = 3;
 
 const STAGE_TASK_IDS: Record<FlowStage, string> = {
   understand: '01-understand',
@@ -37,6 +38,19 @@ function cloneState(state: ProdifyState): ProdifyState {
           missing_artifacts: [...state.runtime.last_validation.missing_artifacts],
           warnings: [...state.runtime.last_validation.warnings],
           diagnostics: [...state.runtime.last_validation.diagnostics],
+          ...(state.runtime.last_validation.score_delta ? {
+            score_delta: {
+              ...state.runtime.last_validation.score_delta,
+              breakdown_delta: { ...state.runtime.last_validation.score_delta.breakdown_delta },
+              regressed_categories: [...state.runtime.last_validation.score_delta.regressed_categories]
+            }
+          } : {}),
+          ...(state.runtime.last_validation.unmet_requirements ? {
+            unmet_requirements: state.runtime.last_validation.unmet_requirements.map((entry) => ({ ...entry }))
+          } : {}),
+          ...(state.runtime.last_validation.enforcement_action ? {
+            enforcement_action: state.runtime.last_validation.enforcement_action
+          } : {}),
           ...(state.runtime.last_validation.diff_result ? {
             diff_result: {
               ...state.runtime.last_validation.diff_result,
@@ -59,9 +73,13 @@ function cloneState(state: ProdifyState): ProdifyState {
             refactor_impact_report: {
               ...state.runtime.last_validation.refactor_impact_report,
               cosmetic_only_paths: [...state.runtime.last_validation.refactor_impact_report.cosmetic_only_paths],
+              targeted_hotspots: [...state.runtime.last_validation.refactor_impact_report.targeted_hotspots],
               hotspots_touched: [...state.runtime.last_validation.refactor_impact_report.hotspots_touched],
               hotspot_improvements: state.runtime.last_validation.refactor_impact_report.hotspot_improvements
                 .map((entry) => ({ ...entry })),
+              hotspot_metrics: {
+                ...state.runtime.last_validation.refactor_impact_report.hotspot_metrics
+              },
               structural_changes: [...state.runtime.last_validation.refactor_impact_report.structural_changes]
             }
           } : {})
@@ -70,6 +88,53 @@ function cloneState(state: ProdifyState): ProdifyState {
       failure_metadata: state.runtime.failure_metadata
         ? { ...state.runtime.failure_metadata }
         : null,
+      enforcement_loop: {
+        ...state.runtime.enforcement_loop,
+        unmet_requirements: state.runtime.enforcement_loop.unmet_requirements.map((entry) => ({ ...entry })),
+        unmet_requirement_rules: [...state.runtime.enforcement_loop.unmet_requirement_rules],
+        last_diff_result: state.runtime.enforcement_loop.last_diff_result
+          ? {
+            ...state.runtime.enforcement_loop.last_diff_result,
+            modifiedPaths: [...state.runtime.enforcement_loop.last_diff_result.modifiedPaths],
+            addedPaths: [...state.runtime.enforcement_loop.last_diff_result.addedPaths],
+            deletedPaths: [...state.runtime.enforcement_loop.last_diff_result.deletedPaths],
+            formattingOnlyPaths: [...state.runtime.enforcement_loop.last_diff_result.formattingOnlyPaths],
+            commentOnlyPaths: [...state.runtime.enforcement_loop.last_diff_result.commentOnlyPaths],
+            structuralChanges: {
+              ...state.runtime.enforcement_loop.last_diff_result.structuralChanges,
+              new_directories: [...state.runtime.enforcement_loop.last_diff_result.structuralChanges.new_directories],
+              new_layer_directories: [...state.runtime.enforcement_loop.last_diff_result.structuralChanges.new_layer_directories],
+              files_with_reduced_responsibility: [...state.runtime.enforcement_loop.last_diff_result.structuralChanges.files_with_reduced_responsibility],
+              new_modules: [...state.runtime.enforcement_loop.last_diff_result.structuralChanges.new_modules],
+              structural_change_flags: [...state.runtime.enforcement_loop.last_diff_result.structuralChanges.structural_change_flags]
+            }
+          }
+          : null,
+        last_score_delta: state.runtime.enforcement_loop.last_score_delta
+          ? {
+            ...state.runtime.enforcement_loop.last_score_delta,
+            breakdown_delta: { ...state.runtime.enforcement_loop.last_score_delta.breakdown_delta },
+            regressed_categories: [...state.runtime.enforcement_loop.last_score_delta.regressed_categories]
+          }
+          : null,
+        last_validation_delta: {
+          failed_checks: [...state.runtime.enforcement_loop.last_validation_delta.failed_checks],
+          threshold_gaps: [...state.runtime.enforcement_loop.last_validation_delta.threshold_gaps],
+          missing_evidence: [...state.runtime.enforcement_loop.last_validation_delta.missing_evidence],
+          hotspot_targets: [...state.runtime.enforcement_loop.last_validation_delta.hotspot_targets]
+        },
+        last_refactor_impact_report: state.runtime.enforcement_loop.last_refactor_impact_report
+          ? {
+            ...state.runtime.enforcement_loop.last_refactor_impact_report,
+            cosmetic_only_paths: [...state.runtime.enforcement_loop.last_refactor_impact_report.cosmetic_only_paths],
+            targeted_hotspots: [...state.runtime.enforcement_loop.last_refactor_impact_report.targeted_hotspots],
+            hotspots_touched: [...state.runtime.enforcement_loop.last_refactor_impact_report.hotspots_touched],
+            hotspot_improvements: state.runtime.enforcement_loop.last_refactor_impact_report.hotspot_improvements.map((entry) => ({ ...entry })),
+            hotspot_metrics: { ...state.runtime.enforcement_loop.last_refactor_impact_report.hotspot_metrics },
+            structural_changes: [...state.runtime.enforcement_loop.last_refactor_impact_report.structural_changes]
+          }
+          : null
+      },
       bootstrap: {
         ...state.runtime.bootstrap
       },
@@ -123,6 +188,49 @@ function ensureStageCheckpoint(state: ProdifyState): FlowStage {
   return state.runtime.current_stage;
 }
 
+function resetEnforcementLoop(state: ProdifyState): void {
+  state.runtime.enforcement_loop = {
+    stage: null,
+    selected_plan_unit: null,
+    retry_count: 0,
+    retry_limit: ENFORCEMENT_RETRY_LIMIT,
+    can_retry: false,
+    unmet_requirements: [],
+    unmet_requirement_rules: [],
+    last_diff_result: null,
+    last_score_delta: null,
+    last_validation_delta: {
+      failed_checks: [],
+      threshold_gaps: [],
+      missing_evidence: [],
+      hotspot_targets: []
+    },
+    last_refactor_impact_report: null,
+    hard_stop_reason: null
+  };
+}
+
+function buildValidationDelta(validation: StageValidationResult) {
+  const unmet = validation.unmet_requirements ?? validation.violated_rules;
+  return {
+    failed_checks: unmet
+      .filter((issue) => !issue.rule.startsWith('impact-score/'))
+      .map((issue) => issue.rule)
+      .sort((left, right) => left.localeCompare(right)),
+    threshold_gaps: unmet
+      .filter((issue) => issue.rule.startsWith('impact-score/'))
+      .map((issue) => issue.rule)
+      .sort((left, right) => left.localeCompare(right)),
+    missing_evidence: [
+      ...validation.missing_artifacts,
+      ...unmet
+        .filter((issue) => issue.rule.startsWith('artifact/') || issue.rule.startsWith('plan/'))
+        .map((issue) => issue.rule)
+    ].sort((left, right) => left.localeCompare(right)),
+    hotspot_targets: validation.refactor_impact_report?.targeted_hotspots ?? []
+  };
+}
+
 export function stageToTaskId(stage: FlowStage): string {
   return STAGE_TASK_IDS[stage];
 }
@@ -149,6 +257,7 @@ export function bootstrapFlowState(
   nextState.runtime.resumable = true;
   nextState.runtime.blocked_reason = null;
   nextState.runtime.failure_metadata = null;
+  resetEnforcementLoop(nextState);
   nextState.runtime.bootstrap = {
     bootstrapped: true
   };
@@ -168,6 +277,21 @@ export function startFlowExecution(
 
   const nextState = cloneState(state);
   nextState.runtime.mode = mode;
+
+  if (nextState.runtime.current_state === 'blocked' && nextState.runtime.enforcement_loop.can_retry && nextState.runtime.current_stage) {
+    const retryStage = nextState.runtime.current_stage;
+    nextState.runtime.status = RUNTIME_STATUS.RUNNING;
+    nextState.runtime.current_state = pendingState(retryStage);
+    nextState.runtime.current_task_id = stageToTaskId(retryStage);
+    nextState.runtime.pending_stage = null;
+    nextState.runtime.awaiting_user_validation = false;
+    nextState.runtime.blocked_reason = null;
+    nextState.runtime.failure_metadata = null;
+    nextState.runtime.next_action = '$prodify-resume';
+    nextState.runtime.resumable = true;
+    nextState.runtime.timestamps.last_transition_at = now;
+    return nextState;
+  }
 
   if (nextState.runtime.current_state === 'validate_complete') {
     nextState.runtime.status = RUNTIME_STATUS.COMPLETE;
@@ -201,6 +325,14 @@ export function startFlowExecution(
   nextState.runtime.next_action = '$prodify-resume';
   nextState.runtime.resumable = true;
   nextState.runtime.timestamps.last_transition_at = now;
+  if (stage === 'refactor' || stage === 'validate') {
+    nextState.runtime.enforcement_loop.stage = stage;
+    nextState.runtime.enforcement_loop.retry_limit = ENFORCEMENT_RETRY_LIMIT;
+    nextState.runtime.enforcement_loop.can_retry = false;
+    nextState.runtime.enforcement_loop.hard_stop_reason = null;
+  } else {
+    resetEnforcementLoop(nextState);
+  }
 
   return nextState;
 }
@@ -241,6 +373,7 @@ export function completeFlowStage(
   nextState.runtime.blocked_reason = null;
   nextState.runtime.failure_metadata = null;
   nextState.runtime.timestamps.last_transition_at = now;
+  resetEnforcementLoop(nextState);
 
   const upcomingStage = nextStage(currentStage);
   if (!upcomingStage) {
@@ -299,19 +432,57 @@ export function failFlowStage(
   }
 ): ProdifyState {
   const nextState = cloneState(state);
-  nextState.runtime.status = RUNTIME_STATUS.FAILED;
-  nextState.runtime.current_state = 'failed';
+  const currentStage = nextState.runtime.current_stage;
+  const unmetRequirements = validation?.unmet_requirements ?? validation?.violated_rules ?? [];
+  const supportsRetry = Boolean(validation && currentStage && (currentStage === 'refactor' || currentStage === 'validate') && unmetRequirements.length > 0);
+  const retryCount = supportsRetry && nextState.runtime.enforcement_loop.stage === currentStage
+    ? nextState.runtime.enforcement_loop.retry_count + 1
+    : supportsRetry
+      ? 1
+      : 0;
+  const canRetry = supportsRetry && retryCount < ENFORCEMENT_RETRY_LIMIT;
+
+  nextState.runtime.status = canRetry ? RUNTIME_STATUS.BLOCKED : RUNTIME_STATUS.FAILED;
+  nextState.runtime.current_state = canRetry ? 'blocked' : 'failed';
   nextState.runtime.blocked_reason = reason;
   nextState.runtime.awaiting_user_validation = false;
-  nextState.runtime.resumable = false;
-  nextState.runtime.next_action = 'repair runtime state';
+  nextState.runtime.resumable = canRetry;
+  nextState.runtime.next_action = canRetry
+    ? (nextState.runtime.mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute')
+    : 'repair runtime state';
   nextState.runtime.last_validation_result = validation ? 'fail' : nextState.runtime.last_validation_result;
   nextState.runtime.last_validation = validation;
-  nextState.runtime.failure_metadata = {
-    stage: validation?.stage ?? nextState.runtime.current_stage,
-    contract_version: validation?.contract_version ?? null,
-    reason
-  };
+  nextState.runtime.failure_metadata = canRetry
+    ? null
+    : {
+      stage: validation?.stage ?? nextState.runtime.current_stage,
+      contract_version: validation?.contract_version ?? null,
+      reason
+    };
+  if (supportsRetry && currentStage) {
+    nextState.runtime.enforcement_loop = {
+      stage: currentStage,
+      selected_plan_unit: validation?.refactor_impact_report?.selected_plan_unit ?? null,
+      retry_count: retryCount,
+      retry_limit: ENFORCEMENT_RETRY_LIMIT,
+      can_retry: canRetry,
+      unmet_requirements: unmetRequirements.map((entry) => ({ ...entry })),
+      unmet_requirement_rules: unmetRequirements.map((entry) => entry.rule).sort((left, right) => left.localeCompare(right)),
+      last_diff_result: validation?.diff_result ?? null,
+      last_score_delta: validation?.score_delta ?? null,
+      last_validation_delta: validation ? buildValidationDelta(validation) : {
+        failed_checks: [],
+        threshold_gaps: [],
+        missing_evidence: [],
+        hotspot_targets: []
+      },
+      last_refactor_impact_report: validation?.refactor_impact_report ?? null,
+      hard_stop_reason: canRetry ? null : reason
+    };
+  } else {
+    resetEnforcementLoop(nextState);
+    nextState.runtime.enforcement_loop.hard_stop_reason = canRetry ? null : reason;
+  }
   nextState.runtime.timestamps.last_transition_at = now;
   return nextState;
 }
@@ -324,6 +495,14 @@ export function getResumeDecision(state: ProdifyState): ResumeDecision {
       resumable: false,
       command: null,
       reason: 'flow complete'
+    };
+  }
+
+  if (runtime.current_state === 'blocked' && runtime.enforcement_loop.can_retry) {
+    return {
+      resumable: true,
+      command: runtime.mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute',
+      reason: `retry ${runtime.enforcement_loop.stage ?? 'stage'} with unmet requirements`
     };
   }
 

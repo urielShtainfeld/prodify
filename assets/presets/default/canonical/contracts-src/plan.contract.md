@@ -8,6 +8,7 @@ required_artifacts:
     format: markdown
     required_sections:
       - Policy Checks
+      - Prioritized Hotspots
       - Risks
       - Step Breakdown
       - Success Criteria
@@ -21,6 +22,7 @@ policy_rules:
   - Keep the plan deterministic and minimal.
   - Map every step back to a diagnosed issue or architecture rule.
 success_criteria:
+  - High-value hotspots are mapped to execution steps.
   - The plan enumerates executable steps.
   - Verification is defined before refactoring starts.
 skill_routing:

@@ -11,6 +11,7 @@ function normalizePlanUnits(section) {
     let currentId = null;
     let currentDescription = '';
     let currentFiles = [];
+    let currentHotspots = [];
     for (const rawLine of lines) {
         const line = rawLine.trim();
         const idMatch = /^-\s+Step ID:\s+(.+)$/.exec(line);
@@ -19,12 +20,14 @@ function normalizePlanUnits(section) {
                 units.push({
                     id: currentId,
                     description: currentDescription,
-                    files: currentFiles
+                    files: currentFiles,
+                    hotspots: currentHotspots
                 });
             }
             currentId = idMatch[1].trim();
             currentDescription = '';
             currentFiles = [];
+            currentHotspots = [];
             continue;
         }
         if (!currentId) {
@@ -41,13 +44,22 @@ function normalizePlanUnits(section) {
                 .split(',')
                 .map((entry) => entry.trim())
                 .filter((entry) => entry.length > 0);
+            continue;
+        }
+        const hotspotsMatch = /^-\s+Hotspots:\s+(.+)$/.exec(line);
+        if (hotspotsMatch) {
+            currentHotspots = hotspotsMatch[1]
+                .split(',')
+                .map((entry) => entry.trim())
+                .filter((entry) => entry.length > 0);
         }
     }
     if (currentId) {
         units.push({
             id: currentId,
             description: currentDescription,
-            files: currentFiles
+            files: currentFiles,
+            hotspots: currentHotspots
         });
     }
     return units;
@@ -67,7 +79,12 @@ export async function readSelectedRefactorStep(repoRoot) {
     const id = /-\s+Step ID:\s+(.+)/.exec(section)?.[1]?.trim() ?? null;
     const description = /-\s+Description:\s+(.+)/.exec(section)?.[1]?.trim() ?? '';
     const filesSection = extractSection(markdown, 'Changed Files');
+    const hotspotsSection = extractSection(markdown, 'Targeted Hotspots');
     const files = filesSection
+        .split('\n')
+        .map((line) => /^-\s+(.+)$/.exec(line.trim())?.[1]?.trim() ?? null)
+        .filter((line) => Boolean(line));
+    const hotspots = hotspotsSection
         .split('\n')
         .map((line) => /^-\s+(.+)$/.exec(line.trim())?.[1]?.trim() ?? null)
         .filter((line) => Boolean(line));
@@ -77,6 +94,7 @@ export async function readSelectedRefactorStep(repoRoot) {
     return {
         id,
         description,
-        files
+        files,
+        hotspots
     };
 }

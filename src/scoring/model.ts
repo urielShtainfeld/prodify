@@ -72,7 +72,10 @@ export async function calculateLocalScore(
     runtimeState: ProdifyState;
   }
 ): Promise<{ snapshot: ScoreSnapshot; toolOutputs: Record<string, unknown>[] }> {
-  if (kind === 'final' && !(runtimeState.runtime.last_validation?.passed && (runtimeState.runtime.current_state === 'validate_complete' || runtimeState.runtime.current_state === 'completed'))) {
+  const finalScoreAllowed = runtimeState.runtime.current_stage === 'validate'
+    || runtimeState.runtime.current_state === 'validate_pending'
+    || (runtimeState.runtime.last_validation?.passed && (runtimeState.runtime.current_state === 'validate_complete' || runtimeState.runtime.current_state === 'completed'));
+  if (kind === 'final' && !finalScoreAllowed) {
     throw new ProdifyError('Final scoring requires a validated runtime state at validate_complete or completed.', {
       code: 'SCORING_STATE_INVALID'
     });
@@ -202,6 +205,30 @@ export async function readScoreSnapshot(
   }
 
   return JSON.parse(await fs.readFile(targetPath, 'utf8')) as ScoreSnapshot;
+}
+
+export async function writeValidationScoreArtifacts(
+  repoRoot: string,
+  {
+    runtimeState,
+    minImpactScore
+  }: {
+    runtimeState: ProdifyState;
+    minImpactScore?: number;
+  }
+): Promise<{ final: ScoreSnapshot; delta: ScoreDelta }> {
+  const final = await writeScoreSnapshot(repoRoot, {
+    kind: 'final',
+    runtimeState
+  });
+  const delta = await writeScoreDelta(repoRoot, {
+    ...(minImpactScore !== undefined ? { minImpactScore } : {})
+  });
+
+  return {
+    final,
+    delta
+  };
 }
 
 export async function syncScoreArtifactsForRuntimeState(repoRoot: string, runtimeState: ProdifyState): Promise<void> {

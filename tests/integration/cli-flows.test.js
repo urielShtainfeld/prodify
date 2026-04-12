@@ -57,6 +57,7 @@ test('init creates only .prodify-owned runtime scaffolding', async () => {
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'delta.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'validation-delta.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'hotspots.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'enforcement-loop.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'iteration-telemetry.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'repo-context.json'));
   await fs.access(path.join(repoRoot, '.prodify', 'runtime', 'skill-resolution', 'understand.json'));

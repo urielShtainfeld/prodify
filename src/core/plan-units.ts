@@ -6,6 +6,7 @@ export interface PlanUnit {
   id: string;
   description: string;
   files: string[];
+  hotspots: string[];
 }
 
 function extractSection(markdown: string, heading: string): string {
@@ -20,6 +21,7 @@ function normalizePlanUnits(section: string): PlanUnit[] {
   let currentId: string | null = null;
   let currentDescription = '';
   let currentFiles: string[] = [];
+  let currentHotspots: string[] = [];
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -29,13 +31,15 @@ function normalizePlanUnits(section: string): PlanUnit[] {
         units.push({
           id: currentId,
           description: currentDescription,
-          files: currentFiles
+          files: currentFiles,
+          hotspots: currentHotspots
         });
       }
 
       currentId = idMatch[1].trim();
       currentDescription = '';
       currentFiles = [];
+      currentHotspots = [];
       continue;
     }
 
@@ -55,6 +59,15 @@ function normalizePlanUnits(section: string): PlanUnit[] {
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
+      continue;
+    }
+
+    const hotspotsMatch = /^-\s+Hotspots:\s+(.+)$/.exec(line);
+    if (hotspotsMatch) {
+      currentHotspots = hotspotsMatch[1]
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
     }
   }
 
@@ -62,7 +75,8 @@ function normalizePlanUnits(section: string): PlanUnit[] {
     units.push({
       id: currentId,
       description: currentDescription,
-      files: currentFiles
+      files: currentFiles,
+      hotspots: currentHotspots
     });
   }
 
@@ -86,7 +100,12 @@ export async function readSelectedRefactorStep(repoRoot: string): Promise<PlanUn
   const id = /-\s+Step ID:\s+(.+)/.exec(section)?.[1]?.trim() ?? null;
   const description = /-\s+Description:\s+(.+)/.exec(section)?.[1]?.trim() ?? '';
   const filesSection = extractSection(markdown, 'Changed Files');
+  const hotspotsSection = extractSection(markdown, 'Targeted Hotspots');
   const files = filesSection
+    .split('\n')
+    .map((line) => /^-\s+(.+)$/.exec(line.trim())?.[1]?.trim() ?? null)
+    .filter((line): line is string => Boolean(line));
+  const hotspots = hotspotsSection
     .split('\n')
     .map((line) => /^-\s+(.+)$/.exec(line.trim())?.[1]?.trim() ?? null)
     .filter((line): line is string => Boolean(line));
@@ -97,6 +116,7 @@ export async function readSelectedRefactorStep(repoRoot: string): Promise<PlanUn
   return {
     id,
     description,
-    files
+    files,
+    hotspots
   };
 }

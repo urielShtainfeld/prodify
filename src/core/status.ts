@@ -264,7 +264,19 @@ function describeHotspotImpact(report: StatusReport): string {
   }
 
   const improvements = impact.hotspot_improvements.filter((entry) => entry.improved).map((entry) => entry.path);
-  return `${impact.hotspots_touched.length} touched, improved=${improvements.join(',') || 'none'}`;
+  const metrics = impact.hotspot_metrics;
+  return `${impact.hotspots_touched.length} touched, improved=${improvements.join(',') || 'none'}, score_delta=${metrics.total_score_delta}, reduced_lines=${metrics.reduced_line_count}`;
+}
+
+function describeEnforcementLoop(report: StatusReport): string {
+  const loop = report.runtimeState?.runtime.enforcement_loop;
+  if (!loop || !loop.stage) {
+    return 'idle';
+  }
+
+  const unmet = loop.unmet_requirement_rules.join(',') || 'none';
+  const hardStop = loop.hard_stop_reason ? `, hard_stop=${loop.hard_stop_reason}` : '';
+  return `${loop.stage} retry ${loop.retry_count}/${loop.retry_limit}, can_retry=${loop.can_retry}, unmet=${unmet}${hardStop}`;
 }
 
 async function checkBootstrapReadiness(repoRoot: string): Promise<boolean> {
@@ -316,6 +328,10 @@ function deriveNextAction({
     }
 
     return `tell your agent: "${bootstrapPrompt}"`;
+  }
+
+  if (runtimeState.runtime.current_state === 'blocked' && runtimeState.runtime.enforcement_loop.can_retry) {
+    return runtimeState.runtime.mode === 'auto' ? '$prodify-execute --auto' : '$prodify-execute';
   }
 
   if (runtimeState.runtime.current_state === 'failed' || runtimeState.runtime.last_validation_result === 'fail') {
@@ -510,6 +526,8 @@ function buildStatusJson(report: StatusReport): Record<string, unknown> {
       summary: describeHotspotImpact(report),
       last_refactor_impact: report.runtimeState?.runtime.last_validation?.refactor_impact_report ?? null
     },
+    enforcement_loop: report.runtimeState?.runtime.enforcement_loop ?? null,
+    enforcement_summary: describeEnforcementLoop(report),
     active_skills: report.stageSkillResolution?.active_skill_ids ?? [],
     considered_skills: report.stageSkillResolution?.considered_skills.map((skill) => ({
       id: skill.id,
@@ -536,6 +554,7 @@ function renderCompactStatusReport(report: StatusReport): string {
     `Validation: ${describeStageValidation(report)}`,
     `Scoring: ${describeScoring(report)}`,
     `Hotspots: ${describeHotspotImpact(report)}`,
+    `Enforcement: ${describeEnforcementLoop(report)}`,
     `Skills: ${describeActiveSkills(report)}`,
     `Bootstrap: ${report.manualBootstrapReady ? `${report.bootstrapProfile} ready` : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
     `Next action: ${report.recommendedNextAction}`
@@ -565,6 +584,7 @@ function renderVerboseStatusReport(report: StatusReport): string {
     `Stage validation: ${describeStageValidation(report)}`,
     `Scoring summary: ${describeScoring(report)}`,
     `Hotspot impact: ${describeHotspotImpact(report)}`,
+    `Enforcement loop: ${describeEnforcementLoop(report)}`,
     `Bootstrap runtime: ${report.manualBootstrapReady ? 'ready' : 'repair .prodify/runtime/bootstrap.json or .prodify/AGENTS.md'}`,
     `Bootstrap profile: ${report.bootstrapProfile}`,
     `Bootstrap prompt: ${report.bootstrapPrompt}`,

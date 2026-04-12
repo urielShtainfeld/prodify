@@ -127,7 +127,10 @@ async function loadSelectedPlanUnit(repoRoot, stage) {
 }
 function selectFilesOfInterest(options) {
     const planFiles = options.selectedPlanUnit?.files ?? [];
-    const hotspotFiles = options.hotspots.map((entry) => entry.path);
+    const hotspotFiles = [
+        ...(options.selectedPlanUnit?.hotspots ?? []),
+        ...options.hotspots.map((entry) => entry.path)
+    ];
     const artifactPath = options.currentArtifactSummary ? [options.currentArtifactSummary.artifact_path] : [];
     return [...new Set([...planFiles, ...hotspotFiles.slice(0, 3), ...artifactPath])]
         .filter((entry) => entry.length > 0)
@@ -151,10 +154,12 @@ function buildDeltaPayload(options) {
         changed_since_last_iteration: {
             runtime_state: options.state.runtime.current_state,
             next_action: options.state.runtime.next_action,
-            score_delta: options.scoreSummary.delta?.delta ?? null
+            score_delta: options.scoreSummary.delta?.delta ?? null,
+            retry_count: options.state.runtime.enforcement_loop.retry_count
         },
         next_required_action: options.state.runtime.next_action,
-        contract_expectations: options.contract?.success_criteria ?? []
+        contract_expectations: options.contract?.success_criteria ?? [],
+        unmet_requirements: options.state.runtime.enforcement_loop.unmet_requirement_rules
     };
 }
 function buildValidationDeltaPayload(state) {
@@ -163,7 +168,11 @@ function buildValidationDeltaPayload(state) {
         schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
         stage: state.runtime.current_stage ?? state.runtime.pending_stage ?? null,
         status: validation?.passed ? 'pass' : validation ? 'fail' : 'unknown',
-        failed_checks: validation?.violated_rules ?? [],
+        failed_checks: state.runtime.enforcement_loop.last_validation_delta.failed_checks,
+        threshold_gaps: state.runtime.enforcement_loop.last_validation_delta.threshold_gaps,
+        missing_evidence: state.runtime.enforcement_loop.last_validation_delta.missing_evidence,
+        hotspot_targets: state.runtime.enforcement_loop.last_validation_delta.hotspot_targets,
+        unmet_requirements: validation?.unmet_requirements ?? validation?.violated_rules ?? [],
         missing_artifacts: validation?.missing_artifacts ?? [],
         warnings: validation?.warnings ?? [],
         diagnostics: validation?.diagnostics ?? []
@@ -229,7 +238,9 @@ export async function syncRuntimeMetadata(repoRoot, state) {
         artifact_dependencies: contract?.required_artifacts.map((artifact) => artifact.path) ?? [],
         score_summary: scoreSummary,
         hotspots: hotspotsAfter,
-        hotspot_improvements: hotspotImprovements
+        hotspot_improvements: hotspotImprovements,
+        hotspot_metrics: state.runtime.last_validation?.refactor_impact_report?.hotspot_metrics ?? null,
+        enforcement_loop: state.runtime.enforcement_loop
     };
     const bootstrapManifest = {
         schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
@@ -251,6 +262,7 @@ export async function syncRuntimeMetadata(repoRoot, state) {
         delta_path: '.prodify/runtime/delta.json',
         validation_delta_path: '.prodify/runtime/validation-delta.json',
         hotspots_path: '.prodify/runtime/hotspots.json',
+        enforcement_loop_path: '.prodify/runtime/enforcement-loop.json',
         commands: {
             init: '$prodify-init',
             execute: '$prodify-execute',
@@ -261,6 +273,7 @@ export async function syncRuntimeMetadata(repoRoot, state) {
         schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
         current_stage: stage,
         selected_execution_unit: selectedPlanUnit,
+        targeted_hotspots: selectedPlanUnit?.hotspots ?? [],
         files_of_interest: filesOfInterest,
         relevant_contract_slice: contract ? {
             task_id: contract.task_id,
@@ -273,6 +286,8 @@ export async function syncRuntimeMetadata(repoRoot, state) {
         } : null,
         active_skills: stageSkillResolution?.active_skill_ids ?? [],
         relevant_validation_checks: state.runtime.last_validation?.violated_rules ?? [],
+        unmet_requirements: state.runtime.enforcement_loop.unmet_requirement_rules,
+        retry_context: state.runtime.enforcement_loop,
         score_snapshot: scoreSummary,
         next_output_target: contract?.required_artifacts[0]?.path ?? null
     };
@@ -285,7 +300,12 @@ export async function syncRuntimeMetadata(repoRoot, state) {
     const hotspotsSummary = {
         schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
         hotspots: hotspotsAfter,
-        improvements: hotspotImprovements
+        improvements: hotspotImprovements,
+        metrics: state.runtime.last_validation?.refactor_impact_report?.hotspot_metrics ?? null
+    };
+    const enforcementLoopSummary = {
+        schema_version: RUNTIME_METADATA_SCHEMA_VERSION,
+        ...state.runtime.enforcement_loop
     };
     const deltaPayload = buildDeltaPayload({
         state,
@@ -299,5 +319,6 @@ export async function syncRuntimeMetadata(repoRoot, state) {
     await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/delta.json'), serializeJson(deltaPayload));
     await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/validation-delta.json'), serializeJson(validationDeltaPayload));
     await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/hotspots.json'), serializeJson(hotspotsSummary));
+    await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/enforcement-loop.json'), serializeJson(enforcementLoopSummary));
     await writeFileEnsuringDir(resolveCanonicalPath(repoRoot, '.prodify/runtime/iteration-telemetry.json'), serializeJson(iterationTelemetry));
 }

@@ -96,8 +96,8 @@ test('refactor validation enforces plan units, diff thresholds, and structural c
   refactorState.runtime.current_task_id = '05-refactor';
   await writeRuntimeState(repoRoot, refactorState);
 
-  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '04-plan.md'), `# 04-plan\n\n## Policy Checks\n- Keep the plan deterministic and minimal.\n- Map every step back to a diagnosed issue or architecture rule.\n\n## Risks\n- low\n\n## Step Breakdown\n- Step ID: step-01-extract-service\n  - Description: extract service module from legacy flow.\n  - Files: src/legacy.ts, src/services/legacy-service.ts\n  - Risk: 2\n  - Validation: npm test\n\n## Success Criteria\n- The plan enumerates executable steps.\n- Verification is defined before refactoring starts.\n\n## Verification\n- npm test\n`, 'utf8');
-  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n- src/services/legacy-service.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-extract-service\n- Description: extract service module from legacy flow.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n- The refactor changes a high-value hotspot when hotspots are present.\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '04-plan.md'), `# 04-plan\n\n## Policy Checks\n- Keep the plan deterministic and minimal.\n- Map every step back to a diagnosed issue or architecture rule.\n\n## Prioritized Hotspots\n- src/legacy.ts\n\n## Risks\n- low\n\n## Step Breakdown\n- Step ID: step-01-extract-service\n  - Description: extract service module from legacy flow.\n  - Files: src/legacy.ts, src/services/legacy-service.ts\n  - Hotspots: src/legacy.ts\n  - Risk: 2\n  - Validation: npm test\n\n## Success Criteria\n- High-value hotspots are mapped to execution steps.\n- The plan enumerates executable steps.\n- Verification is defined before refactoring starts.\n\n## Verification\n- npm test\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n- src/services/legacy-service.ts\n\n## Targeted Hotspots\n- src/legacy.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-extract-service\n- Description: extract service module from legacy flow.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Targeted hotspots are addressed explicitly.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n- The refactor changes a high-value hotspot when hotspots are present.\n`, 'utf8');
 
   await fs.mkdir(path.join(repoRoot, 'src', 'services'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), `import { loadLegacyService } from './services/legacy-service.js';\n\nexport function legacyFlow() {\n  return loadLegacyService();\n}\n`, 'utf8');
@@ -115,6 +115,8 @@ test('refactor validation enforces plan units, diff thresholds, and structural c
   assert.equal(result.diff_result?.filesAdded, 1);
   assert.match(result.diff_result?.structuralChanges.structural_change_flags.join(',') ?? '', /module-boundary-created/);
   assert.match(result.refactor_impact_report?.hotspots_touched.join(',') ?? '', /src\/legacy\.ts/);
+  assert.equal(result.refactor_impact_report?.targeted_hotspots[0], 'src/legacy.ts');
+  assert.ok((result.refactor_impact_report?.hotspot_metrics.improved_hotspots ?? 0) >= 0);
 });
 
 test('refactor validation rejects cosmetic-only changes', async () => {
@@ -140,8 +142,8 @@ test('refactor validation rejects cosmetic-only changes', async () => {
   refactorState.runtime.current_task_id = '05-refactor';
   await writeRuntimeState(repoRoot, refactorState);
 
-  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '04-plan.md'), `# 04-plan\n\n## Policy Checks\n- Keep the plan deterministic and minimal.\n- Map every step back to a diagnosed issue or architecture rule.\n\n## Risks\n- low\n\n## Step Breakdown\n- Step ID: step-01-legacy-comment\n  - Description: touch legacy file.\n  - Files: src/legacy.ts\n  - Risk: 1\n  - Validation: npm test\n\n## Success Criteria\n- The plan enumerates executable steps.\n- Verification is defined before refactoring starts.\n\n## Verification\n- npm test\n`, 'utf8');
-  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-legacy-comment\n- Description: touch legacy file.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n- The refactor changes a high-value hotspot when hotspots are present.\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '04-plan.md'), `# 04-plan\n\n## Policy Checks\n- Keep the plan deterministic and minimal.\n- Map every step back to a diagnosed issue or architecture rule.\n\n## Prioritized Hotspots\n- src/legacy.ts\n\n## Risks\n- low\n\n## Step Breakdown\n- Step ID: step-01-legacy-comment\n  - Description: touch legacy file.\n  - Files: src/legacy.ts\n  - Hotspots: src/legacy.ts\n  - Risk: 1\n  - Validation: npm test\n\n## Success Criteria\n- High-value hotspots are mapped to execution steps.\n- The plan enumerates executable steps.\n- Verification is defined before refactoring starts.\n\n## Verification\n- npm test\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '05-refactor.md'), `# 05-refactor\n\n## Behavior Guardrails\n- keep the change scoped to one plan unit.\n\n## Changed Files\n- src/legacy.ts\n\n## Targeted Hotspots\n- src/legacy.ts\n\n## Policy Checks\n- Execute exactly one selected step.\n- Keep the diff minimal and behavior-preserving unless the plan says otherwise.\n\n## Selected Step\n- Step ID: step-01-legacy-comment\n- Description: touch legacy file.\n\n## Success Criteria\n- The selected plan step is implemented fully.\n- Targeted hotspots are addressed explicitly.\n- Unrelated files remain untouched.\n- The refactor introduces measurable structural improvement.\n- The refactor changes a high-value hotspot when hotspots are present.\n`, 'utf8');
 
   await fs.writeFile(path.join(repoRoot, 'src', 'legacy.ts'), `// comment only\nexport function legacyFlow() {\n  return 1;\n}\n`, 'utf8');
 
@@ -179,7 +181,7 @@ test('validate stage fails when impact score delta is below the configured thres
   validateState.runtime.current_state = 'validate_pending';
   validateState.runtime.current_stage = 'validate';
   validateState.runtime.current_task_id = '06-validate';
-  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '06-validate.md'), `# 06-validate\n\n## Policy Checks\n- Validation must follow every refactor step.\n- Critical regressions block forward progress.\n\n## Regressions\n- none observed\n\n## Success Criteria\n- Validation records whether regressions were found.\n- The result is strong enough to gate the next runtime transition.\n- The measured impact score exceeds the minimum threshold.\n\n## Validation Results\n- baseline and current score compared\n`, 'utf8');
+  await fs.writeFile(path.join(repoRoot, '.prodify', 'artifacts', '06-validate.md'), `# 06-validate\n\n## Policy Checks\n- Validation must follow every refactor step.\n- Critical regressions block forward progress.\n\n## Regressions\n- none observed\n\n## Hotspot Reduction\n- hotspot pressure not yet reduced enough\n\n## Success Criteria\n- Hotspot reduction evidence is recorded explicitly.\n- Validation records whether regressions were found.\n- The result is strong enough to gate the next runtime transition.\n- The measured impact score exceeds the minimum threshold.\n- Score regressions do not exceed the allowed threshold.\n\n## Validation Results\n- baseline and current score compared\n`, 'utf8');
 
   const result = await validateStageOutputs(repoRoot, {
     contract: await loadCompiledContract(repoRoot, 'validate'),
@@ -189,4 +191,6 @@ test('validate stage fails when impact score delta is below the configured thres
 
   assert.equal(result.passed, false);
   assert.match(result.violated_rules.map((issue) => issue.rule).join(','), /impact-score\/minimum-threshold/);
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'final.score.json'));
+  await fs.access(path.join(repoRoot, '.prodify', 'metrics', 'delta.json'));
 });

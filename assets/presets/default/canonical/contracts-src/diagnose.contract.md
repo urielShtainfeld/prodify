@@ -9,6 +9,7 @@ required_artifacts:
     required_sections:
       - Constraints
       - Observed Issues
+      - Prioritized Hotspots
       - Policy Checks
       - Root Causes
       - Success Criteria
@@ -22,6 +23,7 @@ policy_rules:
   - Do not propose implementation changes in the diagnosis stage.
 success_criteria:
   - Every critical issue is tied to evidence.
+  - High-value hotspots are prioritized explicitly.
   - Root causes are separated from symptoms.
 skill_routing:
   default_skills:

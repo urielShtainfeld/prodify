@@ -97,7 +97,7 @@ export function detectHotspotsFromSnapshot(snapshot, options = {}) {
         .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path))
         .slice(0, options.limit ?? 5);
 }
-export async function evaluateHotspotImprovements(repoRoot, { before, after, touchedPaths }) {
+export async function evaluateHotspotImprovements(_repoRoot, { before, after, touchedPaths }) {
     const touched = new Set(touchedPaths.map((entry) => normalizeRepoRelativePath(entry)));
     const afterByPath = new Map(after.map((entry) => [entry.path, entry]));
     return before
@@ -108,10 +108,27 @@ export async function evaluateHotspotImprovements(repoRoot, { before, after, tou
             path: entry.path,
             hotspot_score_before: entry.score,
             hotspot_score_after: afterEntry?.score ?? 0,
+            score_delta: (afterEntry?.score ?? 0) - entry.score,
             line_delta: (afterEntry?.line_count ?? 0) - entry.line_count,
             import_delta: (afterEntry?.import_count ?? 0) - entry.import_count,
-            improved: (afterEntry?.score ?? 0) < entry.score
+            improved: (afterEntry?.score ?? 0) < entry.score,
+            pressure_reduced: (afterEntry?.score ?? 0) < entry.score
+                || (afterEntry?.line_count ?? 0) < entry.line_count
+                || (afterEntry?.import_count ?? 0) < entry.import_count
         };
     })
         .sort((left, right) => left.path.localeCompare(right.path));
+}
+export function summarizeHotspotMetrics(before, after, improvements) {
+    return {
+        hotspots_before: before.length,
+        hotspots_after: after.length,
+        targeted_hotspots: improvements.length,
+        improved_hotspots: improvements.filter((entry) => entry.improved).length,
+        total_score_before: before.reduce((sum, entry) => sum + entry.score, 0),
+        total_score_after: after.reduce((sum, entry) => sum + entry.score, 0),
+        total_score_delta: after.reduce((sum, entry) => sum + entry.score, 0) - before.reduce((sum, entry) => sum + entry.score, 0),
+        reduced_line_count: improvements.reduce((sum, entry) => sum + Math.max(0, -1 * entry.line_delta), 0),
+        reduced_import_count: improvements.reduce((sum, entry) => sum + Math.max(0, -1 * entry.import_delta), 0)
+    };
 }

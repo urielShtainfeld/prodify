@@ -2,10 +2,10 @@ import fs from 'node:fs/promises';
 
 import { loadCompiledContract } from '../contracts/compiler.js';
 import { diffAgainstRefactorBaseline, readRefactorBaselineSnapshot } from './diff-validator.js';
-import { detectHotspots, detectHotspotsFromSnapshot, evaluateHotspotImprovements } from './hotspots.js';
+import { detectHotspots, detectHotspotsFromSnapshot, evaluateHotspotImprovements, summarizeHotspotMetrics } from './hotspots.js';
 import { normalizeRepoRelativePath, resolveRepoPath } from './paths.js';
 import { readPlanUnits, readSelectedRefactorStep } from './plan-units.js';
-import { calculateCurrentImpactDelta } from '../scoring/model.js';
+import { calculateCurrentImpactDelta, writeValidationScoreArtifacts } from '../scoring/model.js';
 import type { CompiledStageContract, DiffResult, FlowStage, ProdifyState, StageValidationResult, ValidationIssue } from '../types.js';
 
 function pathIsWithin(pathToCheck: string, root: string): boolean {
@@ -64,6 +64,11 @@ function touchedRepoPaths(diffResult: DiffResult): string[] {
     ...diffResult.addedPaths,
     ...diffResult.deletedPaths
   ])].sort((left, right) => left.localeCompare(right));
+}
+
+function categorizeUnmetRequirements(issues: ValidationIssue[]): ValidationIssue[] {
+  return [...issues]
+    .sort((left, right) => left.rule.localeCompare(right.rule) || left.message.localeCompare(right.message));
 }
 
 async function validateArtifact(
@@ -157,12 +162,24 @@ export async function validateStageOutputs(
   const warnings: string[] = [];
   let refactorImpactReport: StageValidationResult['refactor_impact_report'] | undefined;
   const effectiveDiffResult = diffResult ?? await diffAgainstRefactorBaseline(repoRoot);
-  const impactDelta = contract.min_impact_score > 0
-    ? await calculateCurrentImpactDelta(repoRoot)
+  const persistedValidateScore = contract.stage === 'validate'
+    ? await writeValidationScoreArtifacts(repoRoot, {
+      runtimeState,
+      minImpactScore: contract.min_impact_score > 0 ? contract.min_impact_score : undefined
+    })
     : null;
+  const impactDelta = persistedValidateScore?.delta
+    ?? (contract.min_impact_score > 0 ? await calculateCurrentImpactDelta(repoRoot) : null);
   const baselineSnapshot = await readRefactorBaselineSnapshot(repoRoot);
   const hotspots = baselineSnapshot ? detectHotspotsFromSnapshot(baselineSnapshot) : await detectHotspots(repoRoot);
   const currentHotspots = await detectHotspots(repoRoot);
+  const normalizedTouchedPaths = touchedPaths.map((entry) => normalizeRepoRelativePath(entry));
+  const [planUnits, selectedPlanUnit] = contract.enforce_plan_units
+    ? await Promise.all([
+      readPlanUnits(repoRoot).catch(() => []),
+      readSelectedRefactorStep(repoRoot).catch(() => null)
+    ])
+    : [[], null];
 
   if (runtimeState.runtime.current_stage !== contract.stage) {
     violatedRules.push(buildRule(
@@ -201,29 +218,23 @@ export async function validateStageOutputs(
   }
 
   if (contract.enforce_plan_units) {
-    try {
-      const [planUnits, selectedStep] = await Promise.all([
-        readPlanUnits(repoRoot),
-        readSelectedRefactorStep(repoRoot)
-      ]);
-      if (!selectedStep) {
-        violatedRules.push(buildRule(
-          'plan/selected-step-missing',
-          'Refactor artifact does not declare the selected plan unit.'
-        ));
-      } else if (!planUnits.some((unit) => unit.id === selectedStep.id)) {
-        violatedRules.push(buildRule(
-          'plan/selected-step-invalid',
-          `Selected refactor step ${selectedStep.id} does not exist in 04-plan.md.`
-        ));
-      } else {
-        diagnostics.push(`validated selected plan unit ${selectedStep.id}`);
-      }
-    } catch {
+    if (planUnits.length === 0 && !selectedPlanUnit) {
       violatedRules.push(buildRule(
         'plan/unreadable',
         'Plan-unit validation could not read 04-plan.md or 05-refactor.md.'
       ));
+    } else if (!selectedPlanUnit) {
+      violatedRules.push(buildRule(
+        'plan/selected-step-missing',
+        'Refactor artifact does not declare the selected plan unit.'
+      ));
+    } else if (!planUnits.some((unit) => unit.id === selectedPlanUnit.id)) {
+      violatedRules.push(buildRule(
+        'plan/selected-step-invalid',
+        `Selected refactor step ${selectedPlanUnit.id} does not exist in 04-plan.md.`
+      ));
+    } else {
+      diagnostics.push(`validated selected plan unit ${selectedPlanUnit.id}`);
     }
   }
 
@@ -253,12 +264,15 @@ export async function validateStageOutputs(
     ])].sort((left, right) => left.localeCompare(right));
     const hotspotPathsTouched = hotspots
       .map((hotspot) => hotspot.path)
-      .filter((hotspotPath) => touchedPaths.map((entry) => normalizeRepoRelativePath(entry)).includes(hotspotPath));
+      .filter((hotspotPath) => normalizedTouchedPaths.includes(hotspotPath));
+    const targetedHotspots = selectedPlanUnit?.hotspots ?? [];
     const hotspotImprovements = await evaluateHotspotImprovements(repoRoot, {
       before: hotspots,
       after: currentHotspots,
       touchedPaths: touchedRepoPaths(effectiveDiffResult)
     });
+    const hotspotMetrics = summarizeHotspotMetrics(hotspots, currentHotspots, hotspotImprovements);
+    const changedRepoPaths = touchedRepoPaths(effectiveDiffResult);
 
     if (changedFiles < contract.diff_validation_rules.minimum_files_modified) {
       violatedRules.push(buildRule(
@@ -309,10 +323,34 @@ export async function validateStageOutputs(
       ));
     }
 
+    if (!changedRepoPaths.some((entry) => entry.startsWith('src/'))) {
+      violatedRules.push(buildRule(
+        'diff/structural-relevance',
+        'Refactor did not touch structurally relevant source files under src/.'
+      ));
+    }
+
     if (hotspots.length > 0 && hotspotPathsTouched.length < contract.diff_validation_rules.minimum_hotspots_touched) {
       violatedRules.push(buildRule(
         'hotspots/minimum-targets',
         `Refactor touched ${hotspotPathsTouched.length} hotspot files but requires at least ${contract.diff_validation_rules.minimum_hotspots_touched}.`
+      ));
+    }
+
+    if (selectedPlanUnit?.files.length) {
+      const untouchedPlanFiles = selectedPlanUnit.files.filter((entry) => !changedRepoPaths.includes(normalizeRepoRelativePath(entry)));
+      if (untouchedPlanFiles.length === selectedPlanUnit.files.length) {
+        violatedRules.push(buildRule(
+          'plan/selected-step-files-untouched',
+          `Refactor did not materially execute the selected plan unit files: ${selectedPlanUnit.files.join(', ')}.`
+        ));
+      }
+    }
+
+    if (targetedHotspots.length > 0 && !targetedHotspots.some((entry) => hotspotPathsTouched.includes(normalizeRepoRelativePath(entry)))) {
+      violatedRules.push(buildRule(
+        'hotspots/selected-targets-untouched',
+        `Refactor did not touch the selected hotspot targets: ${targetedHotspots.join(', ')}.`
       ));
     }
 
@@ -324,13 +362,14 @@ export async function validateStageOutputs(
     }
 
     diagnostics.push(`validated diff: files=${changedFiles}, lines=${changedLines}, non_formatting=${nonFormattingLines}, structural=${effectiveDiffResult.structuralChanges.structural_change_flags.join(',') || 'none'}, hotspots=${hotspotPathsTouched.join(',') || 'none'}`);
-    const selectedPlanUnit = contract.enforce_plan_units ? await readSelectedRefactorStep(repoRoot) : null;
     refactorImpactReport = {
       changed_files: changedFiles,
       non_formatting_lines_changed: nonFormattingLines,
       cosmetic_only_paths: cosmeticOnlyPaths,
+      targeted_hotspots: targetedHotspots,
       hotspots_touched: hotspotPathsTouched,
       hotspot_improvements: hotspotImprovements,
+      hotspot_metrics: hotspotMetrics,
       structural_changes: effectiveDiffResult.structuralChanges.structural_change_flags,
       selected_plan_unit: selectedPlanUnit?.id ?? null
     };
@@ -393,6 +432,9 @@ export async function validateStageOutputs(
     missing_artifacts: [...new Set(missingArtifacts)].sort((left, right) => left.localeCompare(right)),
     warnings,
     diagnostics,
+    ...(impactDelta ? { score_delta: impactDelta } : {}),
+    ...(violatedRules.length > 0 ? { unmet_requirements: categorizeUnmetRequirements(violatedRules) } : { unmet_requirements: [] }),
+    enforcement_action: violatedRules.length === 0 ? 'pass' : (contract.stage === 'refactor' || contract.stage === 'validate') ? 'retry' : 'fail',
     ...(effectiveDiffResult ? { diff_result: effectiveDiffResult } : {}),
     ...(impactDelta ? { impact_score_delta: impactDelta.delta } : {}),
     ...(refactorImpactReport ? { refactor_impact_report: refactorImpactReport } : {})

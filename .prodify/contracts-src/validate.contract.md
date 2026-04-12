@@ -9,6 +9,7 @@ required_artifacts:
     required_sections:
       - Policy Checks
       - Regressions
+      - Hotspot Reduction
       - Success Criteria
       - Validation Results
   - path: .prodify/state.json
@@ -32,6 +33,7 @@ policy_rules:
   - Validation must follow every refactor step.
   - Critical regressions block forward progress.
 success_criteria:
+  - Hotspot reduction evidence is recorded explicitly.
   - Validation records whether regressions were found.
   - The result is strong enough to gate the next runtime transition.
   - The measured impact score exceeds the minimum threshold.

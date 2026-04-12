@@ -165,19 +165,57 @@ export interface HotspotImprovement {
   path: string;
   hotspot_score_before: number;
   hotspot_score_after: number;
+  score_delta: number;
   line_delta: number;
   import_delta: number;
   improved: boolean;
+  pressure_reduced: boolean;
+}
+
+export interface HotspotMetricsSummary {
+  hotspots_before: number;
+  hotspots_after: number;
+  targeted_hotspots: number;
+  improved_hotspots: number;
+  total_score_before: number;
+  total_score_after: number;
+  total_score_delta: number;
+  reduced_line_count: number;
+  reduced_import_count: number;
 }
 
 export interface RefactorImpactReport {
   changed_files: number;
   non_formatting_lines_changed: number;
   cosmetic_only_paths: string[];
+  targeted_hotspots: string[];
   hotspots_touched: string[];
   hotspot_improvements: HotspotImprovement[];
+  hotspot_metrics: HotspotMetricsSummary;
   structural_changes: string[];
   selected_plan_unit: string | null;
+}
+
+export interface EnforcementValidationDelta {
+  failed_checks: string[];
+  threshold_gaps: string[];
+  missing_evidence: string[];
+  hotspot_targets: string[];
+}
+
+export interface EnforcementLoopState {
+  stage: FlowStage | null;
+  selected_plan_unit: string | null;
+  retry_count: number;
+  retry_limit: number;
+  can_retry: boolean;
+  unmet_requirements: ValidationIssue[];
+  unmet_requirement_rules: string[];
+  last_diff_result: DiffResult | null;
+  last_score_delta: ScoreDelta | null;
+  last_validation_delta: EnforcementValidationDelta;
+  last_refactor_impact_report: RefactorImpactReport | null;
+  hard_stop_reason: string | null;
 }
 
 export interface CompiledStageContract {
@@ -231,6 +269,9 @@ export interface StageValidationResult {
   diagnostics: string[];
   diff_result?: DiffResult;
   impact_score_delta?: number;
+  score_delta?: ScoreDelta;
+  unmet_requirements?: ValidationIssue[];
+  enforcement_action?: 'pass' | 'retry' | 'fail';
   refactor_impact_report?: RefactorImpactReport;
 }
 
@@ -259,6 +300,7 @@ export interface RuntimeStateBlock {
   resumable: boolean;
   blocked_reason: string | null;
   failure_metadata: RuntimeFailureMetadata | null;
+  enforcement_loop: EnforcementLoopState;
   bootstrap: RuntimeBootstrapMetadata;
   next_action: string;
   timestamps: RuntimeTimestamps;

@@ -9,6 +9,7 @@ required_artifacts:
     required_sections:
       - Behavior Guardrails
       - Changed Files
+      - Targeted Hotspots
       - Policy Checks
       - Selected Step
       - Success Criteria
@@ -34,6 +35,7 @@ policy_rules:
   - Keep the diff minimal and behavior-preserving unless the plan says otherwise.
 success_criteria:
   - The selected plan step is implemented fully.
+  - Targeted hotspots are addressed explicitly.
   - Unrelated files remain untouched.
   - The refactor introduces measurable structural improvement.
   - The refactor changes a high-value hotspot when hotspots are present.
